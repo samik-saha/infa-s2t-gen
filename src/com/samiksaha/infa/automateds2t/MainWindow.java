@@ -4,7 +4,6 @@
  */
 package com.samiksaha.infa.automateds2t;
 
-import java.awt.BorderLayout;
 import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
@@ -26,8 +25,6 @@ import javax.xml.parsers.DocumentBuilder;
 import javax.xml.parsers.DocumentBuilderFactory;
 import javax.xml.parsers.ParserConfigurationException;
 import javax.xml.xpath.XPath;
-import javax.xml.xpath.XPathConstants;
-import javax.xml.xpath.XPathExpressionException;
 import javax.xml.xpath.XPathFactory;
 
 import org.w3c.dom.Document;
@@ -41,11 +38,16 @@ import org.xml.sax.SAXException;
  */
 public class MainWindow extends javax.swing.JFrame {
 
+	/**
+	 * 
+	 */
+	private static final long serialVersionUID = 1L;
 	NodeList mappingNodeList;
-	HashMap mappingObjectList;
-	DefaultListModel mappingListModel;
-	DefaultListModel targetInstanceListModel;
-	ArrayList mappingList;
+	HashMap<String, Node> mappingNodeNamedList;
+	HashMap<String, Mapping> mappingObjectList;
+	DefaultListModel<String> mappingListModel;
+	DefaultListModel<String> targetInstanceListModel;
+	ArrayList<String> mappingList;
 	static Document xmlDocument;
 	XPath xPath;
 
@@ -56,6 +58,7 @@ public class MainWindow extends javax.swing.JFrame {
 		this.mappingList = new ArrayList();
 		this.mappingListModel = new DefaultListModel();
 		this.mappingObjectList = new HashMap();
+		this.mappingNodeNamedList = new HashMap();
 		this.targetInstanceListModel = new DefaultListModel();
 		try {
 			UIManager.setLookAndFeel(UIManager.getSystemLookAndFeelClassName());
@@ -271,7 +274,13 @@ public class MainWindow extends javax.swing.JFrame {
 			javax.swing.event.ListSelectionEvent evt) {// GEN-FIRST:event_mappingJListValueChanged
 		if (!mappingJList.isSelectionEmpty()) {
 			String mappingName = mappingJList.getSelectedValue().toString();
-			Mapping mapping = (Mapping) mappingObjectList.get(mappingName);
+			Mapping mapping;
+			if(mappingObjectList.containsKey(mappingName))
+				mapping = (Mapping) mappingObjectList.get(mappingName);
+			else{
+				mapping = new Mapping(mappingNodeNamedList.get(mappingName));
+				mappingObjectList.put(mapping.getName(),mapping);
+			}
 			String description = mapping.getDescription();
 			int trfCount = mapping.getTransformationCount();
 			String targetTables = mapping.getTargetTableNames().toString();
@@ -292,10 +301,10 @@ public class MainWindow extends javax.swing.JFrame {
 			mappingInfoPanel.add(trfCountLabel);
 			mappingInfoPanel.updateUI();
 
-			ArrayList targetInstances = mapping.getTargetInstanceList();
+			ArrayList<String> targetInstances = mapping.getTargetInstanceList();
 
 			targetInstanceListModel.clear();
-			ListIterator targetInstanceIterator = targetInstances
+			ListIterator<String> targetInstanceIterator = targetInstances
 					.listIterator();
 			while (targetInstanceIterator.hasNext()) {
 				targetInstanceListModel.addElement(targetInstanceIterator
@@ -336,16 +345,18 @@ public class MainWindow extends javax.swing.JFrame {
 				xPath = XPathFactory.newInstance().newXPath();
 
 				mappingNodeList = xmlDocument.getElementsByTagName("MAPPING");
-				Node mappingNode;
+				
+				System.out.println("list of mapping nodes returned");
 				mappingObjectList.clear();
-				for (int i = 0; i < mappingNodeList.getLength(); i++) {
-					mappingNode = mappingNodeList.item(i);
-					Mapping m = new Mapping(mappingNode);
-					mappingObjectList.put(m.getName(), m);
+				
+				mappingNodeNamedList.clear();
+				for (int i = 0; i < mappingNodeList.getLength(); i++){
+					String mappingName = mappingNodeList.item(i).getAttributes().getNamedItem("NAME").getNodeValue();
+					mappingNodeNamedList.put(mappingName,mappingNodeList.item(i));
 				}
-
+				
 				mappingList.clear();
-				mappingList.addAll(mappingObjectList.keySet());
+				mappingList.addAll(mappingNodeNamedList.keySet());
 
 				updateMappingList();
 				jSplitPane1.setVisible(true);
@@ -420,7 +431,7 @@ public class MainWindow extends javax.swing.JFrame {
 		String srchStr = searchBox.getText();
 
 		mappingListModel.clear();
-		ListIterator mappingListIterator = mappingList.listIterator();
+		ListIterator<String> mappingListIterator = mappingList.listIterator();
 		while (mappingListIterator.hasNext()) {
 			String mappingName = (String) mappingListIterator.next();
 			if (mappingName.toUpperCase().contains(srchStr.toUpperCase())) {
@@ -495,10 +506,10 @@ public class MainWindow extends javax.swing.JFrame {
 	private javax.swing.JToolBar jToolBar1;
 	private javax.swing.JToolBar jToolBar2;
 	private javax.swing.JPanel mappingInfoPanel;
-	private javax.swing.JList mappingJList;
+	private javax.swing.JList<String> mappingJList;
 	private javax.swing.JMenuItem menuItemFileOpen;
 	private javax.swing.JTextField searchBox;
 	private javax.swing.JLabel statusMessage;
-	private javax.swing.JList targetInstanceJList;
+	private javax.swing.JList<String> targetInstanceJList;
 	// End of variables declaration//GEN-END:variables
 }

@@ -106,7 +106,7 @@ public class Mapping {
 		try {
 			NodeList trfNodeList = (NodeList) xPath.evaluate(
 					"./TRANSFORMATION", mappingNode, XPathConstants.NODESET);
-			trfCount = trfNodeList.getLength();
+			//trfCount = trfNodeList.getLength();
 		} catch (XPathExpressionException e) {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
@@ -115,7 +115,7 @@ public class Mapping {
 		return trfCount;
 	}
 
-	public ArrayList getTargetInstanceList() {
+	public ArrayList<String> getTargetInstanceList() {
 		return targetInstances;
 	}
 
