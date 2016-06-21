@@ -32,6 +32,8 @@ import org.w3c.dom.Node;
 import org.w3c.dom.NodeList;
 import org.xml.sax.SAXException;
 
+import com.samiksaha.infa.automateds2t.Mapping.S2TRow;
+
 /**
  * 
  * @author Samik
@@ -384,13 +386,13 @@ public class MainWindow extends javax.swing.JFrame {
 				xlOutput.addHeader("Targets");
 				xlOutput.addBlankRow();
 				xlOutput.addFieldMappingsHeader();
-				ArrayList s2t = mapping.createS2T();
-				ListIterator iter = s2t.listIterator();
+				ArrayList<ArrayList<S2TRow>> s2t = mapping.createS2T();
+				ListIterator<ArrayList<S2TRow>> iter = s2t.listIterator();
 				while (iter.hasNext()) {
-					ArrayList s2tRows = (ArrayList) iter.next();
-					ListIterator iter1 = s2tRows.listIterator();
+					ArrayList<S2TRow> s2tRows = (ArrayList<S2TRow>) iter.next();
+					ListIterator<S2TRow> iter1 = s2tRows.listIterator();
 					while (iter1.hasNext()) {
-						Mapping.S2TRow s2tRow = (Mapping.S2TRow) iter1.next();
+						S2TRow s2tRow = (S2TRow) iter1.next();
 						xlOutput.addFieldMappingRow(s2tRow.S2TsrcTblFld,
 								s2tRow.tgtTbl, s2tRow.tgtFld, s2tRow.logic,
 								s2tRow.tgtFldType, s2tRow.tgtFldNullable,

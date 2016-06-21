@@ -195,10 +195,10 @@ public class Mapping {
 		return sq;
 	}
 
-	public ArrayList createS2T() {
-		S2TRow s2tRow = new S2TRow();
-		ArrayList s2tTargetInstance = new ArrayList();
-		ArrayList s2tAllTargetInstances = new ArrayList();
+	public ArrayList<ArrayList<S2TRow>> createS2T() {
+		S2TRow s2tRow;
+		ArrayList<S2TRow> s2tTargetInstance;
+		ArrayList<ArrayList<S2TRow>> s2tAllTargetInstances = new ArrayList<ArrayList<S2TRow>>();
 		String targetInstanceName;
 		String targetTableName;
 		NodeList targetFields;
@@ -211,23 +211,27 @@ public class Mapping {
 		ListIterator iter = targetInstancesForS2T.listIterator();
 
 		while (iter.hasNext()) {
-
 			targetInstanceName = (String) iter.next();
+			s2tTargetInstance = new ArrayList<S2TRow>();
+			Logger.getLogger(Mapping.class.getName()).log(Level.INFO,"Processing target instance "+targetInstanceName);
+			
+			
 			try {
-				s2tRow.tgtTbl = (String) xPath.evaluate("./INSTANCE[@NAME='"
+				String tgtTbl = (String) xPath.evaluate("./INSTANCE[@NAME='"
 						+ targetInstanceName + "' and @TRANSFORMATION_TYPE="
 						+ "'Target Definition']/@TRANSFORMATION_NAME",
 						mappingNode, XPathConstants.STRING);
 
 				targetFields = (NodeList) xPath.evaluate("//TARGET[@NAME='"
-						+ s2tRow.tgtTbl + "']/TARGETFIELD",
+						+ tgtTbl + "']/TARGETFIELD",
 						MainWindow.xmlDocument, XPathConstants.NODESET);
-
+				
 				for (int i = 0; i < targetFields.getLength(); i++) {
+					s2tRow = new S2TRow();
+					s2tRow.tgtTbl=tgtTbl;
 					targetField = targetFields.item(i);
 					s2tRow.tgtFld = (String) xPath.evaluate("./@NAME",
 							targetField, XPathConstants.STRING);
-					System.out.println(s2tRow.tgtFld);
 					s2tRow.tgtFldKeyType = (String) xPath.evaluate(
 							"./@KEYTYPE", targetField, XPathConstants.STRING);
 					s2tRow.tgtFldNullable = (String) xPath.evaluate(
@@ -258,10 +262,9 @@ public class Mapping {
 						s2tRow.logic = "";
 					}
 
-					s2tRow.S2TsrcTblFld.clear();
-
 					s2tRow.S2TsrcTblFld.addAll(srcTblFld);
 
+					
 					s2tTargetInstance.add(s2tRow);
 				}
 			} catch (XPathExpressionException ex) {
@@ -270,6 +273,8 @@ public class Mapping {
 			}
 			s2tAllTargetInstances.add(s2tTargetInstance);
 		}
+		
+		Logger.getLogger(Mapping.class.getName()).log(Level.INFO,s2tAllTargetInstances.get(0).get(0).tgtFld);
 
 		return s2tAllTargetInstances;
 	}
@@ -283,16 +288,18 @@ public class Mapping {
 					+ "' and @TOINSTANCE='" + toInstance + "']";
 			connectorNode = (Node) xPath.evaluate(xPathExpr, mappingNode,
 					XPathConstants.NODE);
-			instFld.field = connectorNode.getAttributes()
-					.getNamedItem("FROMFIELD").getNodeValue();
-			instFld.instanceName = connectorNode.getAttributes()
-					.getNamedItem("FROMINSTANCE").getNodeValue();
-			instFld.instanceType = connectorNode.getAttributes()
-					.getNamedItem("FROMINSTANCETYPE").getNodeValue();
+			if (connectorNode !=null){
+				instFld.field = connectorNode.getAttributes()
+						.getNamedItem("FROMFIELD").getNodeValue();
+				instFld.instanceName = connectorNode.getAttributes()
+						.getNamedItem("FROMINSTANCE").getNodeValue();
+				instFld.instanceType = connectorNode.getAttributes()
+						.getNamedItem("FROMINSTANCETYPE").getNodeValue();
+			}
 		} catch (XPathExpressionException ex) {
 			Logger.getLogger(Mapping.class.getName()).log(Level.SEVERE, null,
 					ex);
-		}
+		} 
 		return instFld;
 	}
 
