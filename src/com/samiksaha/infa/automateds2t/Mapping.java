@@ -8,6 +8,8 @@ import java.util.ArrayList;
 import java.util.ListIterator;
 import java.util.logging.Level;
 import java.util.logging.Logger;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 import javax.xml.xpath.XPath;
 import javax.xml.xpath.XPathConstants;
@@ -30,12 +32,12 @@ public class Mapping {
 	private int transformationCount;
 	ArrayList<String> targetTables;
 	ArrayList<String> targetInstances;
-	ArrayList targetInstancesForS2T;
-	ArrayList srcTblFld;
+	ArrayList<String> targetInstancesForS2T;
+	ArrayList<TableField> srcTblFld;
 
 	public class SQ {
-		ArrayList sqQuery = new ArrayList();
-		ArrayList sqFilter = new ArrayList();
+		ArrayList<String> sqQuery = new ArrayList<String>();
+		ArrayList<String> sqFilter = new ArrayList<String>();
 	}
 
 	public class S2TRow {
@@ -45,10 +47,10 @@ public class Mapping {
 		String tgtFldType;
 		String tgtFldKeyType;
 		String tgtFldNullable;
-		ArrayList S2TsrcTblFld;
+		ArrayList<TableField> S2TsrcTblFld;
 
 		public S2TRow() {
-			this.S2TsrcTblFld = new ArrayList();
+			this.S2TsrcTblFld = new ArrayList<TableField>();
 		}
 	}
 
@@ -61,6 +63,13 @@ public class Mapping {
 	public class InstanceField {
 		String field;
 		String instanceName;
+		String instanceType;
+	}
+	
+	public class Instance{
+		String name;
+		boolean reusable;
+		String trfName;
 		String instanceType;
 	}
 
@@ -80,7 +89,7 @@ public class Mapping {
 		}
 		targetInstances = getInstanceList("Target Definition");
 		targetInstancesForS2T = getInstanceList("Target Definition");
-		targetTables = findTargerTables();
+		targetTables = findTargetTables();
 		transformationCount = countTransformations();
 	}
 
@@ -105,8 +114,8 @@ public class Mapping {
 
 		try {
 			NodeList trfNodeList = (NodeList) xPath.evaluate(
-					"./TRANSFORMATION", mappingNode, XPathConstants.NODESET);
-			//trfCount = trfNodeList.getLength();
+					"./INSTANCE", mappingNode, XPathConstants.NODESET);
+			trfCount = trfNodeList.getLength();
 		} catch (XPathExpressionException e) {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
@@ -120,7 +129,7 @@ public class Mapping {
 	}
 
 	private ArrayList<String> getInstanceList(String transformationType) {
-		ArrayList instanceNameList = new ArrayList();
+		ArrayList<String> instanceNameList = new ArrayList<String>();
 		String instanceName;
 
 		try {
@@ -141,11 +150,10 @@ public class Mapping {
 		return instanceNameList;
 	}
 
-	private ArrayList<String> findTargerTables() {
-		ArrayList targetTableNames = new ArrayList();
+	private ArrayList<String> findTargetTables() {
+		ArrayList<String> targetTableNames = new ArrayList<String>();
 		String targetTableName;
 		String targetInstance;
-		srcTblFld = new ArrayList();
 
 		ListIterator iter = targetInstancesForS2T.listIterator();
 		while (iter.hasNext()) {
@@ -254,8 +262,7 @@ public class Mapping {
 							targetInstanceName, s2tRow.tgtFld);
 
 					if (fromInstanceField != null) {
-						s2tRow.logic = getLogic(fromInstanceField.instanceName,
-								fromInstanceField.field);
+						s2tRow.logic = getLogic(fromInstanceField);
 						if (s2tRow.logic.equals(""))
 							s2tRow.logic = "Straight Move";
 					} else {
@@ -303,10 +310,273 @@ public class Mapping {
 		return instFld;
 	}
 
-	private String getLogic(String instanceName, String fieldName) {
+	private String getLogic(InstanceField instanceField) {		
+		String logic = "";
 		String trfLogic = "";
+		
+		if (instanceField.instanceName==null) return logic;
+		
+		Logger.getLogger(Mapping.class.getName())
+		.log(Level.INFO, "Getting logic for "+instanceField.instanceName+"."+instanceField.field);
 
-		// TODO
-		return trfLogic;
+		Instance instance = getInstance(instanceField.instanceName);
+		Node trfNode = getTrfNode(instance);
+		
+		if (instanceField.instanceType.equals("Source Definition")){
+			Logger.getLogger(Mapping.class.getName()).log(Level.INFO,
+					instance.instanceType+" : "+instance.name+" : "+instance.trfName);
+			getSourceFields(instanceField);
+			return "";
+		}else if (instanceField.instanceType.equals("Expression")){
+			Logger.getLogger(Mapping.class.getName()).log(Level.INFO,
+					instance.instanceType+" : "+instance.name+" : "+instance.trfName);
+			trfLogic = getLogicFromEXP(trfNode, instanceField.field);
+			//TODO - Unconnected lookup
+		}
+		
+		System.out.println("trfLogic="+trfLogic);
+		logic = trfLogic;
+		
+		if (trfLogic.isEmpty()) trfLogic = instanceField.field;
+		
+		Logger.getLogger(Mapping.class.getName()).log(Level.INFO,
+				"Looking for input ports for "+instanceField.field+" in "+instance.name);
+		ArrayList<String> inPorts = getInPorts(trfNode,instance.instanceType,instanceField.field,trfLogic);
+		
+		
+		for (int i=0;i<inPorts.size();i++){
+			String inPort = inPorts.get(i);
+			InstanceField frmInstFld = getFromField(instanceField.instanceName, inPort);
+			
+			if (frmInstFld.instanceName == null) continue;
+			if (!frmInstFld.field.equals(inPort)){
+				logic = inPort + "=" +frmInstFld.field + (logic.isEmpty()?"":"\r\n"+logic);
+			}
+			
+			trfLogic = getLogic(frmInstFld);
+			
+			if (!trfLogic.isEmpty()){
+				logic = trfLogic + (logic.isEmpty()?"":"\r\n"+logic);
+			}
+		}
+		return logic;
 	}
+	
+	private ArrayList<String> getInPorts(Node trfNode, String trfType, String fldNm, String fldExp ){
+		String trfName = trfNode.getAttributes().getNamedItem("NAME").getNodeValue();//for logging purpose
+		Logger.getLogger(Mapping.class.getName()).log(Level.INFO,
+				"Getting input ports for "+fldNm);
+		
+		//TODO - getInPorts for UNION and Mapplet
+		
+		if (trfType.equals("Router")){
+			return getInPortsROUTER(trfNode, fldNm);
+		}else if (trfType.equals("Custom Transformation")){
+			return getInPortsUNION(trfNode, fldNm);
+		}
+		
+		ArrayList<String> inPorts = new ArrayList<String>();
+		String inPort;
+		
+		try {
+			String xPathExpr = "./TRANSFORMFIELD[@PORTTYPE='INPUT/OUTPUT' or @PORTTYPE='INPUT']";
+			NodeList inpPortList = (NodeList) xPath
+					.evaluate(xPathExpr,trfNode,XPathConstants.NODESET);
+			for (int i=0;i<inpPortList.getLength();i++){
+				Node inPortNode = inpPortList.item(i);
+				inPort = inPortNode.getAttributes()
+						.getNamedItem("NAME").getNodeValue();
+				Pattern pattern = Pattern.compile("\\b"+inPort+"\\b");
+				Matcher matcher = pattern.matcher(fldExp);
+				if (matcher.find()){
+					Logger.getLogger(Mapping.class.getName()).log(Level.INFO,
+							"Found input port: "+trfName+"."+inPort+" for "+fldNm);
+					inPorts.add(inPort);
+				}
+			}
+		} catch (XPathExpressionException ex) {
+			Logger.getLogger(Mapping.class.getName()).log(Level.SEVERE, null,
+					ex);
+		}
+		
+		if (inPorts.isEmpty())
+			Logger.getLogger(Mapping.class.getName()).log(Level.INFO,
+					"No input ports found in "+trfType+" "+trfName+" for "+fldNm);
+		return inPorts;
+	}
+	
+	private ArrayList<String> getInPortsROUTER(Node trfNode, String fldNm){
+		String trfName = trfNode.getAttributes().getNamedItem("NAME").getNodeValue();//for logging purpose
+		ArrayList<String> inPorts = new ArrayList<String>();
+		String inPort;
+		try {
+			String xPathExpr = "./TRANSFORMFIELD[@PORTTYPE='OUTPUT' and @NAME='"+fldNm+"']/@REF_FIELD";
+			inPort = (String) xPath.evaluate(xPathExpr,trfNode,XPathConstants.STRING);
+			Logger.getLogger(Mapping.class.getName()).log(Level.INFO,
+					"Found input port: "+trfName+"."+inPort+" for "+fldNm);
+			inPorts.add(inPort);
+		} catch (XPathExpressionException ex) {
+			Logger.getLogger(Mapping.class.getName()).log(Level.SEVERE, null,
+					ex);
+		}
+		return inPorts;
+	}
+	
+	private ArrayList<String> getInPortsUNION(Node trfNode, String fldNm){
+		String trfName = trfNode.getAttributes().getNamedItem("NAME").getNodeValue();//for logging purpose
+		ArrayList<String> inPorts = new ArrayList<String>();
+		String inPort;
+		try {
+			String xPathExpr = "./FIELDDEPENDENCY[@OUTPUTFIELD='"+fldNm+"']/@INPUTFIELD";
+			inPort = (String) xPath.evaluate(xPathExpr,trfNode,XPathConstants.STRING);
+			Logger.getLogger(Mapping.class.getName()).log(Level.INFO,
+					"Found input port: "+trfName+"."+inPort+" for "+fldNm);
+			inPorts.add(inPort);
+		} catch (XPathExpressionException ex) {
+			Logger.getLogger(Mapping.class.getName()).log(Level.SEVERE, null,
+					ex);
+		}
+		return inPorts;
+	}
+	
+	private String getLogicFromEXP(Node trfNode, String field){
+		Logger.getLogger(Mapping.class.getName()).log(Level.INFO,"Getting logic from exp for "+field);
+		String logic="";
+		try {
+			Node trfFldNode = (Node) xPath.evaluate("./TRANSFORMFIELD[@NAME='"+field+"']",trfNode,XPathConstants.NODE);
+			String fldType = trfFldNode.getAttributes().getNamedItem("PORTTYPE").getNodeValue();
+			System.out.println(fldType);
+			if (fldType.equals("OUTPUT")){
+					String expStr = trfFldNode.getAttributes().getNamedItem("EXPRESSION").getNodeValue();
+					logic=field + " = " + expStr + "\r\n";
+					String varExp = getLogicFromEXPVar(trfNode, field, expStr);
+					if (!varExp.isEmpty()){
+						logic = varExp + "\r\n" + logic;
+					}
+			}
+		} catch (XPathExpressionException ex) {
+			Logger.getLogger(Mapping.class.getName()).log(Level.SEVERE, null,
+					ex);
+		}
+		return logic;
+	}
+	
+	private String getLogicFromEXPVar(Node trfNode, String fldName, String fldExp){
+		String logic = "";
+		try {
+			String xPathExpr = "./TRANSFORMFIELD[@PORTTYPE='LOCAL VARIABLE' and @NAME!='"+fldName+"']";
+			NodeList varPortList = (NodeList) xPath
+					.evaluate(xPathExpr,trfNode,XPathConstants.NODESET);
+			
+			for (int i=0;i<varPortList.getLength();i++){
+				Node varPort = varPortList.item(i);
+				String varPortName = varPort.getAttributes()
+						.getNamedItem("NAME").getNodeValue();
+				Pattern pattern = Pattern.compile("\\b"+varPortName+"\\b");
+				Matcher matcher = pattern.matcher(fldExp);
+				
+				if (matcher.find()){
+					String varExp = varPort.getAttributes()
+							.getNamedItem("EXPRESSION").getNodeValue();
+					if (!logic.isEmpty())
+						logic = varPortName + " = " + varExp + "\r\n"+logic;
+					else
+						logic =  varPortName + " = " + varExp;
+					
+					String x = getLogicFromEXPVar(trfNode, varPortName, varExp);
+					if (!x.isEmpty()){
+						logic = x + "\r\n" + logic;
+					}
+				}
+			}
+		} catch (XPathExpressionException ex) {
+			Logger.getLogger(Mapping.class.getName()).log(Level.SEVERE, null,
+					ex);
+		}
+		
+		return logic;
+	}
+	
+	private Instance getInstance(String instanceName){
+		Instance instance = new Instance();
+		try{
+			String xPathExprInstance = ".//INSTANCE[@NAME='"+instanceName+"']";
+			Node instanceNode = (Node) xPath.evaluate(xPathExprInstance,mappingNode,XPathConstants.NODE);
+			
+			instance.name=instanceNode.getAttributes()
+					.getNamedItem("NAME").getNodeValue();
+			instance.trfName=instanceNode.getAttributes()
+					.getNamedItem("TRANSFORMATION_NAME").getNodeValue();
+			instance.instanceType=instanceNode.getAttributes()
+					.getNamedItem("TRANSFORMATION_TYPE").getNodeValue();
+			Node node = instanceNode.getAttributes().getNamedItem("REUSABLE");
+			if (node !=null)
+				instance.reusable=node.getNodeValue().equals("YES")?true:false;
+		}catch (XPathExpressionException ex) {
+			Logger.getLogger(Mapping.class.getName()).log(Level.SEVERE, null,
+					ex);
+		} 
+		
+		return instance;
+	}
+	
+	private Node getTrfNode(Instance instance){
+		Node trfNode = null;
+		if (instance.reusable){
+			//TODO
+		}else{
+			try{
+				String xPathExpr = ".//TRANSFORMATION[@NAME='"+instance.trfName + "']";
+				trfNode = (Node) xPath.evaluate(xPathExpr, mappingNode,
+						XPathConstants.NODE);
+			}catch (XPathExpressionException ex) {
+				Logger.getLogger(Mapping.class.getName()).log(Level.SEVERE, null,
+						ex);
+			} 
+			
+		}
+		return trfNode;
+	}
+	
+	/***
+	 * Finds the source definition field details
+	 * 
+	 * @param instanceField
+	 */
+	private void getSourceFields(InstanceField instanceField){
+		TableField srcFld = new TableField();
+		
+		Logger.getLogger(Mapping.class.getName()).log(Level.INFO, "Source Definition :"+instanceField.instanceName+" Field: "+instanceField.field);
+		
+		try {
+			/* Get transformation name(table name) from Instance node */
+			String xPathExprTrfName = "./INSTANCE[@NAME='" + instanceField.instanceName+ "']/@TRANSFORMATION_NAME";
+			String trfName = (String) xPath.evaluate(xPathExprTrfName, mappingNode, XPathConstants.STRING);
+			
+			String xPathExprSrcNode = "/POWERMART/REPOSITORY/FOLDER/SOURCE[@NAME='" + trfName + "']/SOURCEFIELD[@NAME='"+instanceField.field + "']";
+			Node srcFldNode = (Node) xPath.evaluate(xPathExprSrcNode, MainWindow.xmlDocument,XPathConstants.NODE);
+			
+			srcFld.fldName=instanceField.field;
+			srcFld.tblName=trfName;
+			String srcFldDataType = (String) xPath.evaluate("./@DATATYPE",
+					srcFldNode, XPathConstants.STRING);
+			String srcFldPrec = (String) xPath.evaluate("./@PRECISION",
+					srcFldNode, XPathConstants.STRING);
+			String srcFldScale = (String) xPath.evaluate("./@SCALE",
+					srcFldNode, XPathConstants.STRING);
+			srcFld.fldType = srcFldDataType
+					+ "("
+					+ srcFldPrec
+					+ (srcFldScale.equals("0") ? "" : "," + srcFldScale)
+					+ ")";
+			srcTblFld.add(srcFld);
+		}catch (XPathExpressionException ex) {
+			Logger.getLogger(Mapping.class.getName()).log(Level.SEVERE, null,
+					ex);
+		} 
+		
+		
+	}
+
+
 }

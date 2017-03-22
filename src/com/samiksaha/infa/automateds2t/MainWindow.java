@@ -16,6 +16,7 @@ import javax.swing.BoxLayout;
 import javax.swing.DefaultListModel;
 import javax.swing.JFileChooser;
 import javax.swing.JLabel;
+import javax.swing.JOptionPane;
 import javax.swing.UIManager;
 import javax.swing.UnsupportedLookAndFeelException;
 import javax.swing.event.DocumentEvent;
@@ -321,7 +322,9 @@ public class MainWindow extends javax.swing.JFrame {
 		FileNameExtensionFilter filter = new FileNameExtensionFilter(
 				"XML Files", "xml");
 		fc.setFileFilter(filter);
+
 		int returnVal = fc.showOpenDialog(this);
+
 
 		if (returnVal == JFileChooser.APPROVE_OPTION) {
 			File file = fc.getSelectedFile();
@@ -399,12 +402,14 @@ public class MainWindow extends javax.swing.JFrame {
 								s2tRow.tgtFldKeyType);
 						System.out.println(s2tRow.tgtTbl + s2tRow.tgtFld
 								+ s2tRow.logic + s2tRow.tgtFldType
-								+ s2tRow.tgtFldNullable + s2tRow.tgtFldKeyType);
+								+ s2tRow.tgtFldNullable + s2tRow.tgtFldKeyType+" source:");
 					}
 
 				}
 				xlOutput.close();
 			}
+		} else {
+			JOptionPane.showMessageDialog(this, "Please select a mapping");
 		}
 
 	}// GEN-LAST:event_btnGenerateS2TActionPerformed

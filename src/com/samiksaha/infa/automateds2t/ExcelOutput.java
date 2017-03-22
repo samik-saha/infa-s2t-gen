@@ -13,7 +13,6 @@ import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.util.ArrayList;
-import java.util.ListIterator;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import org.apache.poi.ss.usermodel.Cell;
@@ -26,6 +25,8 @@ import org.apache.poi.ss.usermodel.Workbook;
 import org.apache.poi.ss.util.CellRangeAddress;
 import org.apache.poi.ss.util.WorkbookUtil;
 import org.apache.poi.xssf.usermodel.XSSFWorkbook;
+
+import com.samiksaha.infa.automateds2t.Mapping.TableField;
 
 public class ExcelOutput {
 
@@ -81,6 +82,7 @@ public class ExcelOutput {
         CellRangeAddress region = new CellRangeAddress(0, 1, 0, 10);
         ws.addMergedRegion(region);
 
+        ws.setColumnWidth(3, 50*256);
 
         //Set used row and column
         usedRow = 2;
@@ -103,7 +105,7 @@ public class ExcelOutput {
 
     public void addFieldMappingsHeader(){
         Cell cell;
-        Row row = ws.createRow(usedRow+1);
+        Row row = ws.createRow(usedRow++);
         cell = row.createCell(0);
         cell.setCellStyle(headerStyle);
         cell.setCellValue("Source Table");
@@ -133,7 +135,7 @@ public class ExcelOutput {
         cell.setCellValue("Key Type");        
     }
     
-    public void addFieldMappingRow(ArrayList srcTblFlds,
+    public void addFieldMappingRow(ArrayList<TableField> srcTblFlds,
             String tgtTbl,
             String tgtFld,
             String logic,
@@ -142,47 +144,63 @@ public class ExcelOutput {
             String tgtFldKeyType){
         Mapping.TableField srcTblFld;
         
-        int startRow = usedRow+1;
-        ListIterator iter = srcTblFlds.listIterator();
-        while(iter.hasNext()){
-            srcTblFld = (Mapping.TableField)iter.next();
-            Row row = ws.createRow(usedRow+1);
-            Cell cell = row.createCell(0);
-            cell.setCellValue(srcTblFld.tblName);
+        int startRow = usedRow++;
+        
+        Row row = ws.createRow(startRow);
+        Cell cell = row.createCell(0);
+
+        for(int i =0;i<srcTblFlds.size();i++){
+            srcTblFld = (Mapping.TableField)srcTblFlds.get(i);
+            //Row row = ws.createRow(usedRow+1);
+            //Cell cell = row.createCell(0);
+            cell.setCellValue(cell.getStringCellValue()+"\n"+srcTblFld.tblName);
             cell = row.createCell(1);
-            cell.setCellValue(srcTblFld.fldName);
+            cell.setCellValue(cell.getStringCellValue()+"\n"+srcTblFld.fldName);
             cell = row.createCell(2);
-            cell.setCellValue(srcTblFld.fldType);
+            cell.setCellValue(cell.getStringCellValue()+"\n"+srcTblFld.fldType);
             usedRow+=1; 
         }
         
-        if (startRow==usedRow+1) usedRow+=1;
+        //if (startRow==usedRow+1) usedRow+=1;
         
-        Row row = ws.createRow(startRow);
+       
+
+        CellStyle style = wb.createCellStyle();
+        style.setWrapText(true); 
         
-        Cell cell = row.createCell(3);
+        cell = row.createCell(3);
+        cell.setCellStyle(style);
         cell.setCellValue(logic);
-        ws.addMergedRegion(new CellRangeAddress(startRow,usedRow,3,3));
+
+        //ws.addMergedRegion(new CellRangeAddress(startRow,usedRow,3,3));
         cell = row.createCell(4);
         cell.setCellValue(tgtTbl);
-        ws.addMergedRegion(new CellRangeAddress(startRow,usedRow,4,4));
+        //ws.addMergedRegion(new CellRangeAddress(startRow,usedRow,4,4));
         cell = row.createCell(5);
         cell.setCellValue(tgtFld);
-        ws.addMergedRegion(new CellRangeAddress(startRow,usedRow,5,5));
+       // ws.addMergedRegion(new CellRangeAddress(startRow,usedRow,5,5));
         cell = row.createCell(6);
         cell.setCellValue(tgtFldType);
-        ws.addMergedRegion(new CellRangeAddress(startRow,usedRow,6,6));
+        //ws.addMergedRegion(new CellRangeAddress(startRow,usedRow,6,6));
         cell = row.createCell(7);
         cell.setCellValue(tgtFldNullable);
-        ws.addMergedRegion(new CellRangeAddress(startRow,usedRow,7,7));
-        cell = row.createCell(7);
+        //ws.addMergedRegion(new CellRangeAddress(startRow,usedRow,7,7));
+        cell = row.createCell(8);
         cell.setCellValue(tgtFldKeyType);
-        ws.addMergedRegion(new CellRangeAddress(startRow,usedRow,8,8));
+        //ws.addMergedRegion(new CellRangeAddress(startRow,usedRow,8,8));
         
     }
     
     public void close() {
         try {
+        	ws.autoSizeColumn(0);
+        	ws.autoSizeColumn(1);
+        	ws.autoSizeColumn(2);
+        	ws.autoSizeColumn(4);
+        	ws.autoSizeColumn(5);
+        	ws.autoSizeColumn(6);
+        	ws.autoSizeColumn(7);
+        	ws.autoSizeColumn(8);
             wb.write(fileOut);
             fileOut.close();
         } catch (IOException ex) {
