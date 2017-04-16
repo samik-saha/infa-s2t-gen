@@ -161,6 +161,7 @@ public class ExcelOutput {
             usedRow+=1; 
         }
         
+        if (srcTblFlds.size()>0) usedRow --;
         //if (startRow==usedRow+1) usedRow+=1;
         
        

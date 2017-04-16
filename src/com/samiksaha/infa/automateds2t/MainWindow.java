@@ -4,6 +4,9 @@
  */
 package com.samiksaha.infa.automateds2t;
 
+import java.awt.Component;
+import java.beans.PropertyChangeEvent;
+import java.beans.PropertyChangeListener;
 import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
@@ -17,6 +20,7 @@ import javax.swing.DefaultListModel;
 import javax.swing.JFileChooser;
 import javax.swing.JLabel;
 import javax.swing.JOptionPane;
+import javax.swing.ProgressMonitor;
 import javax.swing.UIManager;
 import javax.swing.UnsupportedLookAndFeelException;
 import javax.swing.event.DocumentEvent;
@@ -53,6 +57,9 @@ public class MainWindow extends javax.swing.JFrame {
 	ArrayList<String> mappingList;
 	static Document xmlDocument;
 	XPath xPath;
+	ExcelOutput xlOutput;
+	private ProgressMonitor progressMonitor;
+	Mapping mapping;
 
 	/**
 	 * Creates new form MainWindow
@@ -281,7 +288,7 @@ public class MainWindow extends javax.swing.JFrame {
 			if(mappingObjectList.containsKey(mappingName))
 				mapping = (Mapping) mappingObjectList.get(mappingName);
 			else{
-				mapping = new Mapping(mappingNodeNamedList.get(mappingName));
+				mapping = new Mapping(this, mappingNodeNamedList.get(mappingName));
 				mappingObjectList.put(mapping.getName(),mapping);
 			}
 			String description = mapping.getDescription();
@@ -375,7 +382,10 @@ public class MainWindow extends javax.swing.JFrame {
 	private void btnGenerateS2TActionPerformed(java.awt.event.ActionEvent evt) {// GEN-FIRST:event_btnGenerateS2TActionPerformed
 		if (!mappingJList.isSelectionEmpty()) {
 			String mappingName = mappingJList.getSelectedValue().toString();
-			Mapping mapping = (Mapping) mappingObjectList.get(mappingName);
+			mapping = (Mapping) mappingObjectList.get(mappingName);
+			
+			if (!targetInstanceJList.isSelectionEmpty())
+				mapping.setTargetInstancesForS2T((ArrayList<String>) targetInstanceJList.getSelectedValuesList());
 
 			final JFileChooser fc = new JFileChooser();
 			int returnVal = fc.showSaveDialog(this);
@@ -384,29 +394,39 @@ public class MainWindow extends javax.swing.JFrame {
 			fc.setFileFilter(filter);
 
 			if (returnVal == JFileChooser.APPROVE_OPTION) {
-				ExcelOutput xlOutput = new ExcelOutput(fc.getSelectedFile());
+				xlOutput = new ExcelOutput(fc.getSelectedFile());
 				xlOutput.createWorksheet(mappingName);
 				xlOutput.addHeader("Targets");
 				xlOutput.addBlankRow();
 				xlOutput.addFieldMappingsHeader();
-				ArrayList<ArrayList<S2TRow>> s2t = mapping.createS2T();
-				ListIterator<ArrayList<S2TRow>> iter = s2t.listIterator();
-				while (iter.hasNext()) {
-					ArrayList<S2TRow> s2tRows = (ArrayList<S2TRow>) iter.next();
-					ListIterator<S2TRow> iter1 = s2tRows.listIterator();
-					while (iter1.hasNext()) {
-						S2TRow s2tRow = (S2TRow) iter1.next();
-						xlOutput.addFieldMappingRow(s2tRow.S2TsrcTblFld,
-								s2tRow.tgtTbl, s2tRow.tgtFld, s2tRow.logic,
-								s2tRow.tgtFldType, s2tRow.tgtFldNullable,
-								s2tRow.tgtFldKeyType);
-						System.out.println(s2tRow.tgtTbl + s2tRow.tgtFld
-								+ s2tRow.logic + s2tRow.tgtFldType
-								+ s2tRow.tgtFldNullable + s2tRow.tgtFldKeyType+" source:");
-					}
+				progressMonitor = new ProgressMonitor(MainWindow.this, "Builing S2T",
+						"", 0, 100);
+				progressMonitor.setMillisToDecideToPopup(0);
+				progressMonitor.setMillisToPopup(0);
 
-				}
-				xlOutput.close();
+				mapping.addPropertyChangeListener(new PropertyChangeListener() {
+
+					@Override
+					public void propertyChange(PropertyChangeEvent evt) {
+						if ("progress" == evt.getPropertyName()) {
+							int progress = (Integer) evt.getNewValue();
+							progressMonitor.setProgress(progress);
+							String message = String.format("Completed %d%%.\n",
+									progress);
+							progressMonitor.setNote(message);
+							if (progressMonitor.isCanceled() || mapping.isDone()) {
+								if (progressMonitor.isCanceled()) {
+									mapping.cancel(true);
+								} else {
+									progressMonitor.close();
+								}
+							}
+						}
+
+					}
+				});
+				disableUserInteraction();
+				mapping.execute();
 			}
 		} else {
 			JOptionPane.showMessageDialog(this, "Please select a mapping");
@@ -446,6 +466,28 @@ public class MainWindow extends javax.swing.JFrame {
 			}
 		}
 
+	}
+	
+	public void outputToExcel(ArrayList<ArrayList<S2TRow>> s2t){
+		ListIterator<ArrayList<S2TRow>> iter = s2t.listIterator();
+		while (iter.hasNext()) {
+			ArrayList<S2TRow> s2tRows = (ArrayList<S2TRow>) iter.next();
+			ListIterator<S2TRow> iter1 = s2tRows.listIterator();
+			while (iter1.hasNext()) {
+				S2TRow s2tRow = (S2TRow) iter1.next();
+				xlOutput.addFieldMappingRow(s2tRow.S2TsrcTblFld,
+						s2tRow.tgtTbl, s2tRow.tgtFld, s2tRow.logic,
+						s2tRow.tgtFldType, s2tRow.tgtFldNullable,
+						s2tRow.tgtFldKeyType);
+				/*
+				System.out.println(s2tRow.tgtTbl + s2tRow.tgtFld
+						+ s2tRow.logic + s2tRow.tgtFldType
+						+ s2tRow.tgtFldNullable + s2tRow.tgtFldKeyType+" source:");
+				*/
+			}
+
+		}
+		xlOutput.close();
 	}
 
 	/**
@@ -492,6 +534,32 @@ public class MainWindow extends javax.swing.JFrame {
 				new MainWindow().setVisible(true);
 			}
 		});
+	}
+	
+	public void disableUserInteraction(){
+		Component[] components = jMenuBar1.getComponents();
+		for (int i=0; i < components.length; i++){
+			components[i].setEnabled(false);
+		}
+		
+		components = jToolBar1.getComponents();
+			for (int i=0; i < components.length; i++){
+				components[i].setEnabled(false);
+			}
+		searchBox.setEnabled(false);
+	}
+	
+	public void enableUserInteraction(){
+		Component[] components = jMenuBar1.getComponents();
+		for (int i=0; i < components.length; i++){
+			components[i].setEnabled(true);
+		}
+		
+		components = jToolBar1.getComponents();
+			for (int i=0; i < components.length; i++){
+				components[i].setEnabled(true);
+			}
+		searchBox.setEnabled(true);
 	}
 
 	// Variables declaration - do not modify//GEN-BEGIN:variables
