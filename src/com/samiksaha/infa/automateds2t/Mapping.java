@@ -789,9 +789,39 @@ public class Mapping extends SwingWorker<Void, Void> {
 		return "";
 	}
 	
-	private String getLogicFromAGGVar(Node trfNode, String fldName, String expStr) {
+	private String getLogicFromAGGVar(Node trfNode, String fldName, String fldExp) {
 		// TODO Auto-generated method stub
-		return null;
+		String expStr;
+		String varPortName;
+		String aggVarLogic="";
+		
+		try {
+			NodeList varPorts = (NodeList) xPath.evaluate("//TRANSFORMATION/TRANSFORMFIELD[@PORTTYPE='LOCAL VARIABLE']",trfNode, XPathConstants.NODESET);
+			for (int i = 0; i < varPorts.getLength(); i++){
+				varPortName = varPorts.item(i).getAttributes().getNamedItem("NAME").getNodeValue();
+				Pattern pattern = Pattern.compile("\b"+varPortName+"\b");
+				Matcher matcher = pattern.matcher(fldExp);
+				if (matcher.matches()){
+					expStr = varPorts.item(i).getAttributes().getNamedItem("EXPRESSION").getNodeValue();
+					
+					aggVarLogic = fldName + " = " + expStr;
+					
+					//The expression for this variable in turn may contain other variable ports.
+					//Call the function recursively
+					
+					String x = getLogicFromAGGVar(trfNode, varPortName, expStr);
+					if (!x.isEmpty() && x != null){
+						aggVarLogic = x + "\r\n" +aggVarLogic;
+					}
+				}
+				
+			}
+		} catch (XPathExpressionException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		};
+		
+		return aggVarLogic;
 	}
 
 	private String getLogicFromMapplet(Node trfNode, String fldName) {
