@@ -37,9 +37,12 @@ public class ExcelOutput {
     Font captionFont, headerFont;
     CellStyle captionStyle, headerStyle;
     FileOutputStream fileOut;
+    Logger logger;
 
     public ExcelOutput(File file) {
-
+    	logger = Logger.getLogger(ExcelOutput.class.getName());
+    	
+    	
         try {
             wb = new XSSFWorkbook();
             fileOut = new FileOutputStream(file);
@@ -144,51 +147,56 @@ public class ExcelOutput {
             String tgtFldKeyType){
         Mapping.TableField srcTblFld;
         
-        int startRow = usedRow++;
+        int startRow = usedRow;
         
         Row row = ws.createRow(startRow);
         Cell cell = row.createCell(0);
 
         for(int i =0;i<srcTblFlds.size();i++){
             srcTblFld = (Mapping.TableField)srcTblFlds.get(i);
-            //Row row = ws.createRow(usedRow+1);
-            //Cell cell = row.createCell(0);
-            cell.setCellValue(cell.getStringCellValue()+"\n"+srcTblFld.tblName);
+            logger.log(Level.INFO, "Writing source field for " + tgtFld + ": "+srcTblFld.fldName);
+            row = ws.createRow(usedRow);
+            cell = row.createCell(0);
+            cell.setCellValue(srcTblFld.tblName);
             cell = row.createCell(1);
-            cell.setCellValue(cell.getStringCellValue()+"\n"+srcTblFld.fldName);
+            cell.setCellValue(srcTblFld.fldName);
             cell = row.createCell(2);
-            cell.setCellValue(cell.getStringCellValue()+"\n"+srcTblFld.fldType);
+            cell.setCellValue(srcTblFld.fldType);
             usedRow+=1; 
         }
         
-        if (srcTblFlds.size()>0) usedRow --;
+        if (srcTblFlds.size()>0) usedRow--;
         //if (startRow==usedRow+1) usedRow+=1;
         
        
 
         CellStyle style = wb.createCellStyle();
         style.setWrapText(true); 
-        
+        row = ws.getRow(startRow);
         cell = row.createCell(3);
         cell.setCellStyle(style);
         cell.setCellValue(logic);
+        
+        logger.log(Level.INFO,"Creating merged region: start row:"+startRow+" end row:"+usedRow);
 
-        //ws.addMergedRegion(new CellRangeAddress(startRow,usedRow,3,3));
+        ws.addMergedRegion(new CellRangeAddress(startRow,usedRow,3,3));
         cell = row.createCell(4);
         cell.setCellValue(tgtTbl);
-        //ws.addMergedRegion(new CellRangeAddress(startRow,usedRow,4,4));
+        ws.addMergedRegion(new CellRangeAddress(startRow,usedRow,4,4));
         cell = row.createCell(5);
         cell.setCellValue(tgtFld);
-       // ws.addMergedRegion(new CellRangeAddress(startRow,usedRow,5,5));
+        ws.addMergedRegion(new CellRangeAddress(startRow,usedRow,5,5));
         cell = row.createCell(6);
         cell.setCellValue(tgtFldType);
-        //ws.addMergedRegion(new CellRangeAddress(startRow,usedRow,6,6));
+        ws.addMergedRegion(new CellRangeAddress(startRow,usedRow,6,6));
         cell = row.createCell(7);
         cell.setCellValue(tgtFldNullable);
-        //ws.addMergedRegion(new CellRangeAddress(startRow,usedRow,7,7));
+        ws.addMergedRegion(new CellRangeAddress(startRow,usedRow,7,7));
         cell = row.createCell(8);
         cell.setCellValue(tgtFldKeyType);
-        //ws.addMergedRegion(new CellRangeAddress(startRow,usedRow,8,8));
+        ws.addMergedRegion(new CellRangeAddress(startRow,usedRow,8,8));
+        
+        usedRow++;
         
     }
     

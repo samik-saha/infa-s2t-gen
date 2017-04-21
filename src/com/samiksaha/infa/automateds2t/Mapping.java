@@ -4,11 +4,14 @@
  */
 package com.samiksaha.infa.automateds2t;
 
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.ListIterator;
+import java.util.logging.FileHandler;
 import java.util.logging.Level;
 import java.util.logging.Logger;
+import java.util.logging.SimpleFormatter;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -51,6 +54,7 @@ public class Mapping extends SwingWorker<Void, Void> {
 	private String mappingDescription;
 	private int transformationCount;
 	private ArrayList<String> targetTables;
+	private Logger logger;
 
 	/**
 	 * Contains all target instances in the mapping
@@ -77,7 +81,7 @@ public class Mapping extends SwingWorker<Void, Void> {
 		this.targetInstancesForS2T = targetInstancesForS2T;
 	}
 
-	ArrayList<TableField> srcTblFld;
+	private HashMap <String,TableField> srcTblFld;
 
 	public class SQ {
 		ArrayList<String> sqQuery = new ArrayList<String>();
@@ -131,13 +135,26 @@ public class Mapping extends SwingWorker<Void, Void> {
 		this.mainWindow = mw;
 		this.mappingNode = mappingNode;
 		xPath = XPathFactory.newInstance().newXPath();
+		logger = Logger.getLogger(Mapping.class.getName());
+		try {
+			FileHandler fh = new FileHandler("Mapping.log");
+			fh.setFormatter(new SimpleFormatter());
+			logger.addHandler(fh);
+			logger.setUseParentHandlers(false);
+		} catch (SecurityException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		} catch (IOException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
 
 		try {
 			mappingName = (String) xPath.compile("./@NAME").evaluate(mappingNode, XPathConstants.STRING);
 			mappingDescription = (String) xPath.compile("./@DESCRIPTION").evaluate(mappingNode, XPathConstants.STRING);
 
 		} catch (XPathExpressionException ex) {
-			Logger.getLogger(Mapping.class.getName()).log(Level.SEVERE, null, ex);
+			logger.log(Level.SEVERE, null, ex);
 		}
 		targetInstances = getInstanceList("Target Definition");
 		targetInstancesForS2T = getInstanceList("Target Definition");
@@ -193,7 +210,7 @@ public class Mapping extends SwingWorker<Void, Void> {
 				}
 			}
 		} catch (XPathExpressionException ex) {
-			Logger.getLogger(Mapping.class.getName()).log(Level.SEVERE, null, ex);
+			logger.log(Level.SEVERE, null, ex);
 		}
 		return instanceNameList;
 	}
@@ -215,7 +232,7 @@ public class Mapping extends SwingWorker<Void, Void> {
 				if (!targetTableNames.contains(targetTableName))
 					targetTableNames.add(targetTableName);
 			} catch (XPathExpressionException ex) {
-				Logger.getLogger(Mapping.class.getName()).log(Level.SEVERE, null, ex);
+				logger.log(Level.SEVERE, null, ex);
 			}
 		}
 		return targetTableNames;
@@ -241,7 +258,7 @@ public class Mapping extends SwingWorker<Void, Void> {
 				sq.sqFilter.add(sqFilter);
 			}
 		} catch (XPathExpressionException ex) {
-			Logger.getLogger(Mapping.class.getName()).log(Level.SEVERE, null, ex);
+			logger.log(Level.SEVERE, null, ex);
 		}
 
 		return sq;
@@ -263,14 +280,14 @@ public class Mapping extends SwingWorker<Void, Void> {
 		lookups = new HashMap<>();
 
 		/* Initialize source table/fields array */
-		srcTblFld = new ArrayList<TableField>();
+		srcTblFld = new HashMap<>();
 		
 		ListIterator<String> iter = targetInstancesForS2T.listIterator();
 
 		while (iter.hasNext()) {
 			targetInstanceName = (String) iter.next();
 			s2tTargetInstance = new ArrayList<S2TRow>();
-			Logger.getLogger(Mapping.class.getName()).log(Level.INFO,
+			logger.log(Level.INFO,
 					"Processing target instance " + targetInstanceName);
 
 			try {
@@ -280,7 +297,7 @@ public class Mapping extends SwingWorker<Void, Void> {
 										+ "'Target Definition']/@TRANSFORMATION_NAME",
 								mappingNode, XPathConstants.STRING);
 
-				Logger.getLogger(Mapping.class.getName()).log(Level.INFO, "Found target table: " + tgtTbl);
+				logger.log(Level.INFO, "Found target table: " + tgtTbl);
 
 				/* For shortcuts get target name */
 				String shortcutTgtTbl = (String) xPath.evaluate(
@@ -289,14 +306,14 @@ public class Mapping extends SwingWorker<Void, Void> {
 
 				if (!shortcutTgtTbl.isEmpty()) {
 					tgtTbl = shortcutTgtTbl;
-					Logger.getLogger(Mapping.class.getName()).log(Level.INFO,
+					logger.log(Level.INFO,
 							"Found Shortcut object reference: " + tgtTbl);
 				}
 
 				targetFields = (NodeList) xPath.evaluate("//TARGET[@NAME='" + tgtTbl + "']/TARGETFIELD",
 						MainWindow.xmlDocument, XPathConstants.NODESET);
 
-				Logger.getLogger(Mapping.class.getName()).log(Level.INFO,
+				logger.log(Level.INFO,
 						"No. of target fields found: " + targetFields.getLength());
 				
 				int nTgtFlds = targetFields.getLength();
@@ -314,20 +331,16 @@ public class Mapping extends SwingWorker<Void, Void> {
 					s2tRow.tgtFldType = tgtFldDataType + "(" + tgtFldPrec
 							+ (tgtFldScale.equals("0") ? "" : "," + tgtFldScale) + ")";
 
-					Logger.getLogger(Mapping.class.getName()).log(Level.INFO,
+					logger.log(Level.INFO,
 							"Backtracking target field: " + s2tRow.tgtFld);
 
 					srcTblFld.clear();
 
 					InstanceField fromInstanceField = getFromField(targetInstanceName, s2tRow.tgtFld);
 					
-					s2tRow.S2TsrcTblFld.addAll(srcTblFld);
-					
 					if (fromInstanceField != null) {
 						s2tRow.logic = getLogic(fromInstanceField);
-						
-						s2tRow.S2TsrcTblFld.addAll(srcTblFld);
-						
+						s2tRow.S2TsrcTblFld.addAll(srcTblFld.values());
 						
 						if (!s2tRow.tgtFld.equals(fromInstanceField.field)){				
 							s2tRow.logic = s2tRow.logic + "\r\n" + s2tRow.tgtFld +"="+fromInstanceField.field;
@@ -425,12 +438,12 @@ public class Mapping extends SwingWorker<Void, Void> {
 					
 				}
 			} catch (XPathExpressionException ex) {
-				Logger.getLogger(Mapping.class.getName()).log(Level.SEVERE, null, ex);
+				logger.log(Level.SEVERE, null, ex);
 			}
 			s2tAllTargetInstances.add(s2tTargetInstance);
 		}
 
-		Logger.getLogger(Mapping.class.getName()).log(Level.INFO, s2tAllTargetInstances.get(0).get(0).tgtFld);
+		logger.log(Level.INFO, s2tAllTargetInstances.get(0).get(0).tgtFld);
 		setProgress(100);
 		return s2tAllTargetInstances;
 	}
@@ -448,7 +461,7 @@ public class Mapping extends SwingWorker<Void, Void> {
 				instFld.instanceType = connectorNode.getAttributes().getNamedItem("FROMINSTANCETYPE").getNodeValue();
 			}
 		} catch (XPathExpressionException ex) {
-			Logger.getLogger(Mapping.class.getName()).log(Level.SEVERE, null, ex);
+			logger.log(Level.SEVERE, null, ex);
 		}
 		return instFld;
 	}
@@ -488,19 +501,19 @@ public class Mapping extends SwingWorker<Void, Void> {
 		if (instanceField.instanceName == null)
 			return logic;
 
-		Logger.getLogger(Mapping.class.getName()).log(Level.INFO,
+		logger.log(Level.INFO,
 				"Getting logic for " + instanceField.instanceName + "." + instanceField.field);
 
 		Instance instance = getInstance(instanceField.instanceName);
 		Node trfNode = getTrfNode(instance);
 
 		if (instanceField.instanceType.equals("Source Definition")) {
-			Logger.getLogger(Mapping.class.getName()).log(Level.INFO,
+			logger.log(Level.INFO,
 					instance.instanceType + " : " + instance.name + " : " + instance.trfName);
 			getSourceFields(instanceField);
 			return "";
 		} else if (instanceField.instanceType.equals("Expression")) {
-			Logger.getLogger(Mapping.class.getName()).log(Level.INFO,
+			logger.log(Level.INFO,
 					instance.instanceType + " : " + instance.name + " : " + instance.trfName);
 			trfLogic = getLogicFromEXP(trfNode, instanceField.field);
 			
@@ -515,17 +528,21 @@ public class Mapping extends SwingWorker<Void, Void> {
 				}
 			}
 		} else if (instanceField.instanceType.equals("Lookup Procedure")) {
-			Logger.getLogger(Mapping.class.getName()).log(Level.INFO,
+			logger.log(Level.INFO,
 					instance.instanceType + " : " + instance.name + " : " + instance.trfName);
 			trfLogic = getLogicFromConnectedLookup(trfNode, instanceField.field);
 		}
 		else if (instanceField.instanceType.equals("Mapplet")) {
-			Logger.getLogger(Mapping.class.getName()).log(Level.INFO,
+			logger.log(Level.INFO,
 					instance.instanceType + " : " + instance.name + " : " + instance.trfName);
 			trfLogic = getLogicFromMapplet(trfNode, instanceField.field);
 		} else if (instanceField.instanceType.equals("Router")){
 			ArrayList<String> inPorts = getInPortsROUTER(trfNode, instanceField.field);
 			if (!inPorts.isEmpty())	trfLogic = instanceField.field + "=" + inPorts.get(0);
+		} else if (instanceField.instanceType.equals("Aggregator")) {
+			logger.log(Level.INFO,
+					instance.instanceType + " : " + instance.name + " : " + instance.trfName);
+			trfLogic = getLogicFromAGG(trfNode, instanceField.field);
 		}
 
 		System.out.println("trfLogic=" + trfLogic);
@@ -534,7 +551,7 @@ public class Mapping extends SwingWorker<Void, Void> {
 		if (trfLogic.isEmpty())
 			trfLogic = instanceField.field;
 
-		Logger.getLogger(Mapping.class.getName()).log(Level.INFO,
+		logger.log(Level.INFO,
 				"Looking for input ports for " + instanceField.field + " in " + instance.name);
 		ArrayList<String> inPorts = getInPorts(trfNode, instance.instanceType, instanceField.field, trfLogic);
 
@@ -561,7 +578,7 @@ public class Mapping extends SwingWorker<Void, Void> {
 		String trfName = trfNode.getAttributes().getNamedItem("NAME").getNodeValue();// for
 																						// logging
 																						// purpose
-		Logger.getLogger(Mapping.class.getName()).log(Level.INFO, "Getting input ports for " + fldNm);
+		logger.log(Level.INFO, "Getting input ports for " + fldNm);
 
 		// TODO - getInPorts for UNION and Mapplet
 
@@ -585,17 +602,17 @@ public class Mapping extends SwingWorker<Void, Void> {
 				Pattern pattern = Pattern.compile("\\b" + inPort + "\\b");
 				Matcher matcher = pattern.matcher(fldExp);
 				if (matcher.find()) {
-					Logger.getLogger(Mapping.class.getName()).log(Level.INFO,
+					logger.log(Level.INFO,
 							"Found input port: " + trfName + "." + inPort + " for " + fldNm);
 					inPorts.add(inPort);
 				}
 			}
 		} catch (XPathExpressionException ex) {
-			Logger.getLogger(Mapping.class.getName()).log(Level.SEVERE, null, ex);
+			logger.log(Level.SEVERE, null, ex);
 		}
 
 		if (inPorts.isEmpty())
-			Logger.getLogger(Mapping.class.getName()).log(Level.INFO,
+			logger.log(Level.INFO,
 					"No input ports found in " + trfType + " " + trfName + " for " + fldNm);
 		return inPorts;
 	}
@@ -609,11 +626,11 @@ public class Mapping extends SwingWorker<Void, Void> {
 		try {
 			String xPathExpr = "./TRANSFORMFIELD[@PORTTYPE='OUTPUT' and @NAME='" + fldNm + "']/@REF_FIELD";
 			inPort = (String) xPath.evaluate(xPathExpr, trfNode, XPathConstants.STRING);
-			Logger.getLogger(Mapping.class.getName()).log(Level.INFO,
+			logger.log(Level.INFO,
 					"Found input port: " + trfName + "." + inPort + " for " + fldNm);
 			inPorts.add(inPort);
 		} catch (XPathExpressionException ex) {
-			Logger.getLogger(Mapping.class.getName()).log(Level.SEVERE, null, ex);
+			logger.log(Level.SEVERE, null, ex);
 		}
 		return inPorts;
 	}
@@ -624,20 +641,27 @@ public class Mapping extends SwingWorker<Void, Void> {
 																						// purpose
 		ArrayList<String> inPorts = new ArrayList<String>();
 		String inPort;
+		
 		try {
+			NodeList inPortList;
 			String xPathExpr = "./FIELDDEPENDENCY[@OUTPUTFIELD='" + fldNm + "']/@INPUTFIELD";
-			inPort = (String) xPath.evaluate(xPathExpr, trfNode, XPathConstants.STRING);
-			Logger.getLogger(Mapping.class.getName()).log(Level.INFO,
-					"Found input port: " + trfName + "." + inPort + " for " + fldNm);
-			inPorts.add(inPort);
+			inPortList = (NodeList) xPath.evaluate(xPathExpr, trfNode, XPathConstants.NODESET);
+		
+			for(int i = 0; i<inPortList.getLength();i++){
+				inPort = inPortList.item(i).getNodeValue();
+				logger.log(Level.INFO,
+						"Found input port: " + trfName + "." + inPort + " for " + fldNm);
+				inPorts.add(inPort);
+			}
+		
 		} catch (XPathExpressionException ex) {
-			Logger.getLogger(Mapping.class.getName()).log(Level.SEVERE, null, ex);
+			logger.log(Level.SEVERE, null, ex);
 		}
 		return inPorts;
 	}
 
 	private String getLogicFromEXP(Node trfNode, String field) {
-		Logger.getLogger(Mapping.class.getName()).log(Level.INFO, "Getting logic from exp for " + field);
+		logger.log(Level.INFO, "Getting logic from exp for " + field);
 		String logic = "";
 		try {
 			Node trfFldNode = (Node) xPath.evaluate("./TRANSFORMFIELD[@NAME='" + field + "']", trfNode,
@@ -653,7 +677,7 @@ public class Mapping extends SwingWorker<Void, Void> {
 				}
 			}
 		} catch (XPathExpressionException ex) {
-			Logger.getLogger(Mapping.class.getName()).log(Level.SEVERE, null, ex);
+			logger.log(Level.SEVERE, null, ex);
 		}
 		return logic;
 	}
@@ -684,7 +708,7 @@ public class Mapping extends SwingWorker<Void, Void> {
 				}
 			}
 		} catch (XPathExpressionException ex) {
-			Logger.getLogger(Mapping.class.getName()).log(Level.SEVERE, null, ex);
+			logger.log(Level.SEVERE, null, ex);
 		}
 
 		return logic;
@@ -699,7 +723,7 @@ public class Mapping extends SwingWorker<Void, Void> {
 		Lookup lookup = new Lookup();
 		
 		try {
-			lookup.lkpName = xPath.evaluate("string(//TRANSFORMATION/@NAME)", lkpTrfNode);
+			lookup.lkpName = xPath.evaluate("string(./@NAME)", lkpTrfNode);
 			lookup.lkpQuery = xPath.evaluate("string(./TABLEATTRIBUTE[@NAME='Lookup Sql Override']/@VALUE)", lkpTrfNode);
 			lookup.lkpCondition = xPath.evaluate("string(./TABLEATTRIBUTE[@NAME='Lookup condition']/@VALUE)", lkpTrfNode);
 			lookup.lkpTblName = xPath.evaluate("string(./TABLEATTRIBUTE[@NAME='Lookup table name']/@VALUE)", lkpTrfNode);
@@ -723,7 +747,7 @@ public class Mapping extends SwingWorker<Void, Void> {
 			String portType = xPath.evaluate("string(./TRANSFORMFIELD[@NAME='"+fldName+"']/@PORTTYPE)", trfNode);
 			if (portType.equals("INPUT/OUTPUT")) return "";
 			
-			String lkpName = xPath.evaluate("string(//TRANSFORMATION/@NAME)", trfNode);
+			String lkpName = xPath.evaluate("string(./@NAME)", trfNode);
 			String sqlOverride = xPath.evaluate("string(./TABLEATTRIBUTE[@NAME='Lookup Sql Override']/@VALUE)", trfNode);
 			
 			if (!(sqlOverride.isEmpty() || sqlOverride == null)){
@@ -796,7 +820,7 @@ public class Mapping extends SwingWorker<Void, Void> {
 		String aggVarLogic="";
 		
 		try {
-			NodeList varPorts = (NodeList) xPath.evaluate("//TRANSFORMATION/TRANSFORMFIELD[@PORTTYPE='LOCAL VARIABLE']",trfNode, XPathConstants.NODESET);
+			NodeList varPorts = (NodeList) xPath.evaluate("./TRANSFORMFIELD[@PORTTYPE='LOCAL VARIABLE']",trfNode, XPathConstants.NODESET);
 			for (int i = 0; i < varPorts.getLength(); i++){
 				varPortName = varPorts.item(i).getAttributes().getNamedItem("NAME").getNodeValue();
 				Pattern pattern = Pattern.compile("\b"+varPortName+"\b");
@@ -951,7 +975,7 @@ public class Mapping extends SwingWorker<Void, Void> {
 			if (node != null)
 				instance.reusable = node.getNodeValue().equals("YES") ? true : false;
 		} catch (XPathExpressionException ex) {
-			Logger.getLogger(Mapping.class.getName()).log(Level.SEVERE, null, ex);
+			logger.log(Level.SEVERE, null, ex);
 		}
 
 		return instance;
@@ -1006,7 +1030,7 @@ public class Mapping extends SwingWorker<Void, Void> {
 				String xPathExpr = ".//TRANSFORMATION[@NAME='" + instance.trfName + "']";
 				trfNode = (Node) xPath.evaluate(xPathExpr, mappingNode, XPathConstants.NODE);
 			} catch (XPathExpressionException ex) {
-				Logger.getLogger(Mapping.class.getName()).log(Level.SEVERE, null, ex);
+				logger.log(Level.SEVERE, null, ex);
 			}
 
 		}
@@ -1021,7 +1045,7 @@ public class Mapping extends SwingWorker<Void, Void> {
 	private void getSourceFields(InstanceField instanceField) {
 		TableField srcFld = new TableField();
 
-		Logger.getLogger(Mapping.class.getName()).log(Level.INFO,
+		logger.log(Level.INFO,
 				"Source Definition :" + instanceField.instanceName + " Field: " + instanceField.field);
 
 		try {
@@ -1036,7 +1060,7 @@ public class Mapping extends SwingWorker<Void, Void> {
 
 			if (!shortcutSrcTbl.isEmpty()) {
 				trfName = shortcutSrcTbl;
-				Logger.getLogger(Mapping.class.getName()).log(Level.INFO,
+				logger.log(Level.INFO,
 						"Found Shortcut object reference: " + trfName);
 			}
 
@@ -1051,9 +1075,12 @@ public class Mapping extends SwingWorker<Void, Void> {
 			String srcFldScale = (String) xPath.evaluate("./@SCALE", srcFldNode, XPathConstants.STRING);
 			srcFld.fldType = srcFldDataType + "(" + srcFldPrec + (srcFldScale.equals("0") ? "" : "," + srcFldScale)
 					+ ")";
-			srcTblFld.add(srcFld);
+			if (!srcTblFld.containsKey(srcFld.tblName+srcFld.fldName))
+				srcTblFld.put(srcFld.tblName+srcFld.fldName, srcFld);
+			
 		} catch (XPathExpressionException ex) {
-			Logger.getLogger(Mapping.class.getName()).log(Level.SEVERE, null, ex);
+			
+			logger.log(Level.SEVERE, null, ex);
 		}
 
 	}
@@ -1067,5 +1094,6 @@ public class Mapping extends SwingWorker<Void, Void> {
 		mainWindow.enableUserInteraction();
 		return null;
 	}
+	
 
 }
