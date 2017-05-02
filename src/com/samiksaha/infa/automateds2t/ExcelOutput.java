@@ -6,15 +6,19 @@ package com.samiksaha.infa.automateds2t;
 
 /**
  *
- * @author Samik
+ * @author Samik Saha (samiksaha88@gmail.com)
  */
 import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.Iterator;
+import java.util.ListIterator;
 import java.util.logging.Level;
 import java.util.logging.Logger;
+
 import org.apache.poi.ss.usermodel.Cell;
 import org.apache.poi.ss.usermodel.CellStyle;
 import org.apache.poi.ss.usermodel.Font;
@@ -26,6 +30,7 @@ import org.apache.poi.ss.util.CellRangeAddress;
 import org.apache.poi.ss.util.WorkbookUtil;
 import org.apache.poi.xssf.usermodel.XSSFWorkbook;
 
+import com.samiksaha.infa.automateds2t.Mapping.Lookup;
 import com.samiksaha.infa.automateds2t.Mapping.TableField;
 
 public class ExcelOutput {
@@ -35,20 +40,15 @@ public class ExcelOutput {
     int usedRow;
     int usedCol;
     Font captionFont, headerFont;
-    CellStyle captionStyle, headerStyle;
+    CellStyle captionStyle, headerStyle, subHeaderStyle;
     FileOutputStream fileOut;
     Logger logger;
 
     public ExcelOutput(File file) {
     	logger = Logger.getLogger(ExcelOutput.class.getName());
-    	
-    	
         try {
             wb = new XSSFWorkbook();
             fileOut = new FileOutputStream(file);
-
-
-
         } catch (FileNotFoundException ex) {
             Logger.getLogger(ExcelOutput.class.getName()).log(Level.SEVERE, null, ex);
         }
@@ -77,6 +77,11 @@ public class ExcelOutput {
         headerStyle.setFillForegroundColor(IndexedColors.BROWN.getIndex());
         headerStyle.setFillPattern(CellStyle.SOLID_FOREGROUND);
         
+        subHeaderStyle = wb.createCellStyle();
+        subHeaderStyle.setFont(headerFont);
+        subHeaderStyle.setFillForegroundColor(IndexedColors.DARK_TEAL.getIndex());
+        subHeaderStyle.setFillPattern(CellStyle.SOLID_FOREGROUND);
+        
 
         Row row = ws.createRow((short) 0);
         Cell cell = row.createCell((short) 0);
@@ -97,18 +102,41 @@ public class ExcelOutput {
     }
 
     public void addHeader(String header) {
-        Row row = ws.createRow(usedRow+1);
+        Row row = ws.createRow(usedRow);
         Cell cell = row.createCell(0);
         cell.setCellStyle(headerStyle);
         cell.setCellValue(header);
-        ws.addMergedRegion(new CellRangeAddress(usedRow+1,usedRow+1,0, 3));
+        ws.addMergedRegion(new CellRangeAddress(usedRow,usedRow,0, 3));
+        
+        usedRow+=1;
+    }
+    
+    public void addSectionHeader(String header) {
+        Row row = ws.createRow(usedRow);
+        Cell cell = row.createCell(0);
+        CellStyle cs = wb.createCellStyle();
+        cs.setFillForegroundColor(IndexedColors.GOLD.index);
+        cs.setFillPattern(CellStyle.SOLID_FOREGROUND);
+        cell.setCellStyle(cs);
+        cell.setCellValue(header);
+        ws.addMergedRegion(new CellRangeAddress(usedRow,usedRow,0, 4));
+        
+        usedRow+=1;
+    }
+    
+    public void addSubHeader(String header) {
+        Row row = ws.createRow(usedRow);
+        Cell cell = row.createCell(0);
+        cell.setCellStyle(subHeaderStyle);
+        cell.setCellValue(header);
+        ws.addMergedRegion(new CellRangeAddress(usedRow,usedRow,0, 3));
         
         usedRow+=1;
     }
 
     public void addFieldMappingsHeader(){
         Cell cell;
-        Row row = ws.createRow(usedRow++);
+        Row row = ws.createRow(usedRow);
         cell = row.createCell(0);
         cell.setCellStyle(headerStyle);
         cell.setCellValue("Source Table");
@@ -135,7 +163,8 @@ public class ExcelOutput {
         cell.setCellValue("Nullable");
         cell = row.createCell(8);
         cell.setCellStyle(headerStyle);
-        cell.setCellValue("Key Type");        
+        cell.setCellValue("Key Type");
+        usedRow+=1;
     }
     
     public void addFieldMappingRow(ArrayList<TableField> srcTblFlds,
@@ -199,6 +228,55 @@ public class ExcelOutput {
         usedRow++;
         
     }
+    
+    public void addQuery(String query){
+    	int nLines = query.split("\\n").length;
+    	addSubHeader("Query");
+    	Row row = ws.createRow(usedRow);
+    	Cell cell= row.createCell(0);
+    	CellStyle cs = wb.createCellStyle();
+    	cs.setWrapText(true);
+    	cell.setCellStyle(cs);
+    	cell.setCellValue(query);
+    	ws.addMergedRegion(new CellRangeAddress(usedRow,usedRow+nLines,0,3));
+    	usedRow+=nLines+1;
+    }
+    
+    public void writeCell(String text, int width){
+    	Row row = ws.createRow(usedRow);
+    	Cell cell = row.createCell(0);
+    	cell.setCellValue(text);
+    	ws.addMergedRegion(new CellRangeAddress(usedRow,usedRow,0,width));
+    	
+    	usedRow+=1;
+    }
+    
+    public void addLookupDetails(HashMap<String, Lookup> lookups){
+    	logger.log(Level.INFO,"Writing lookups: "+lookups.values().size()+ " lookups found");
+    	Lookup lookup;
+    	if(lookups.values().size()>0){
+    		addSectionHeader("Lookup Details");
+    	}
+    	
+    	Iterator<Lookup> iter = lookups.values().iterator();
+    	while(iter.hasNext()){
+    		lookup = iter.next();
+    		logger.log(Level.INFO, "Writing lookup details for "+lookup.lkpName );
+    		addHeader(lookup.lkpName);
+    		if (lookup.lkpCondition != null && !lookup.lkpCondition.isEmpty()){
+    			addSubHeader("Lookup Condition");
+        		writeCell(lookup.lkpCondition,3);
+    		}
+    		if(lookup.lkpQuery != null && !lookup.lkpQuery.isEmpty()){
+    			addQuery(lookup.lkpQuery);
+    		}else{
+    			addSubHeader("Lookup table");
+    			writeCell(lookup.lkpTblName,3);
+    		}
+    		addBlankRow();
+    	}
+    }
+    
     
     public void close() {
         try {

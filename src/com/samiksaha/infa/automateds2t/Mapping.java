@@ -6,7 +6,11 @@ package com.samiksaha.infa.automateds2t;
 
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Collections;
+import java.util.Comparator;
 import java.util.HashMap;
+import java.util.Iterator;
+import java.util.List;
 import java.util.ListIterator;
 import java.util.logging.FileHandler;
 import java.util.logging.Level;
@@ -27,6 +31,7 @@ import org.w3c.dom.NodeList;
 import com.samiksaha.infa.automateds2t.Mapping.Lookup;
 import com.samiksaha.infa.automateds2t.Mapping.S2TRow;
 import com.samiksaha.infa.automateds2t.Mapping.TableField;
+import com.samiksaha.infa.automateds2t.Mapping.TargetInstance;
 
 /**
  * <b>Mapping.java</b>
@@ -36,7 +41,7 @@ import com.samiksaha.infa.automateds2t.Mapping.TableField;
  * @author Samik Saha
  * 
  */
-public class Mapping extends SwingWorker<Void, Void> {
+public class Mapping extends SwingWorker<Void, String> {
 	
 	MainWindow mainWindow;
 	/**
@@ -53,19 +58,20 @@ public class Mapping extends SwingWorker<Void, Void> {
 	private String mappingName;
 	private String mappingDescription;
 	private int transformationCount;
+	private ArrayList<String> sourceTables=new ArrayList<>();
 	private ArrayList<String> targetTables;
 	private Logger logger;
 
 	/**
 	 * Contains all target instances in the mapping
 	 */
-	private ArrayList<String> targetInstances;
+	private ArrayList<TargetInstance> targetInstances;
 
 	/**
 	 * Stores the target instances user selected for preparing S2T. Set by
 	 * MainWindow before calling createS2T.
 	 */
-	private ArrayList<String> targetInstancesForS2T;
+	private ArrayList<TargetInstance> targetInstancesForS2T;
 
 	/**
 	 * Stores mapplet input ports. As mapplet input ports cannot be derived
@@ -78,7 +84,15 @@ public class Mapping extends SwingWorker<Void, Void> {
 	public HashMap<String, Lookup> lookups;
 
 	public void setTargetInstancesForS2T(ArrayList<String> targetInstancesForS2T) {
-		this.targetInstancesForS2T = targetInstancesForS2T;
+		this.targetInstancesForS2T.clear();
+		Iterator<TargetInstance> iter = targetInstances.iterator();
+		while(iter.hasNext()){
+			TargetInstance t = iter.next();
+			if (targetInstancesForS2T.contains(t.name)){
+				this.targetInstancesForS2T.add(t);
+			}
+		}
+		Collections.sort(this.targetInstancesForS2T,new CustomComparator());
 	}
 
 	private HashMap <String,TableField> srcTblFld;
@@ -111,6 +125,16 @@ public class Mapping extends SwingWorker<Void, Void> {
 			this.S2TsrcTblFld = new ArrayList<TableField>();
 		}
 	}
+	
+	public class S2TForTargetInstance{
+		String targetInstanceName;
+		ArrayList<S2TRow> s2tRows;
+		
+		public S2TForTargetInstance(){
+			this.s2tRows = new ArrayList<>();
+		}
+	}
+
 
 	public class TableField {
 		String tblName;
@@ -129,6 +153,11 @@ public class Mapping extends SwingWorker<Void, Void> {
 		boolean reusable;
 		String trfName;
 		String instanceType;
+	}
+	
+	public class TargetInstance {
+		int order;
+		String name;
 	}
 
 	public Mapping(MainWindow mw, Node mappingNode) {
@@ -156,8 +185,27 @@ public class Mapping extends SwingWorker<Void, Void> {
 		} catch (XPathExpressionException ex) {
 			logger.log(Level.SEVERE, null, ex);
 		}
-		targetInstances = getInstanceList("Target Definition");
-		targetInstancesForS2T = getInstanceList("Target Definition");
+		
+		targetInstances = new ArrayList<TargetInstance>();
+		NodeList tgtInstList;
+		try {
+			tgtInstList = (NodeList) xPath.evaluate("//TARGETLOADORDER", mappingNode, XPathConstants.NODESET);
+			TargetInstance t;
+			for(int i = 0; i<tgtInstList.getLength(); i++){
+				Node node = tgtInstList.item(i);
+				t=new TargetInstance();
+				t.order = Integer.parseInt(node.getAttributes().getNamedItem("ORDER").getNodeValue());
+				t.name = node.getAttributes().getNamedItem("TARGETINSTANCE").getNodeValue();
+				targetInstances.add(t);
+			}
+			Collections.sort(targetInstances,new CustomComparator());
+			targetInstancesForS2T = (ArrayList<TargetInstance>) targetInstances.clone();
+			
+		} catch (XPathExpressionException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+		
 		targetTables = findTargetTables();
 		transformationCount = countTransformations();
 	}
@@ -191,7 +239,7 @@ public class Mapping extends SwingWorker<Void, Void> {
 		return trfCount;
 	}
 
-	public ArrayList<String> getTargetInstanceList() {
+	public ArrayList<TargetInstance> getTargetInstanceList() {
 		return targetInstances;
 	}
 
@@ -220,9 +268,9 @@ public class Mapping extends SwingWorker<Void, Void> {
 		String targetTableName;
 		String targetInstance;
 
-		ListIterator iter = targetInstancesForS2T.listIterator();
+		ListIterator<TargetInstance> iter = targetInstancesForS2T.listIterator();
 		while (iter.hasNext()) {
-			targetInstance = (String) iter.next();
+			targetInstance = iter.next().name;
 			try {
 				targetTableName = (String) xPath
 						.evaluate(
@@ -264,10 +312,10 @@ public class Mapping extends SwingWorker<Void, Void> {
 		return sq;
 	}
 
-	public ArrayList<ArrayList<S2TRow>> createS2T() {
+	public ArrayList<S2TForTargetInstance> createS2T() {
 		S2TRow s2tRow;
-		ArrayList<S2TRow> s2tTargetInstance;
-		ArrayList<ArrayList<S2TRow>> s2tAllTargetInstances = new ArrayList<ArrayList<S2TRow>>();
+		S2TForTargetInstance s2tTargetInstance;
+		ArrayList<S2TForTargetInstance> s2tAllTargetInstances = new ArrayList<S2TForTargetInstance>();
 		String targetInstanceName;
 		String targetTableName;
 		NodeList targetFields;
@@ -282,11 +330,11 @@ public class Mapping extends SwingWorker<Void, Void> {
 		/* Initialize source table/fields array */
 		srcTblFld = new HashMap<>();
 		
-		ListIterator<String> iter = targetInstancesForS2T.listIterator();
+		ListIterator<TargetInstance> iter = targetInstancesForS2T.listIterator();
 
 		while (iter.hasNext()) {
-			targetInstanceName = (String) iter.next();
-			s2tTargetInstance = new ArrayList<S2TRow>();
+			targetInstanceName = (String) iter.next().name;
+			s2tTargetInstance = new S2TForTargetInstance();
 			logger.log(Level.INFO,
 					"Processing target instance " + targetInstanceName);
 
@@ -353,7 +401,7 @@ public class Mapping extends SwingWorker<Void, Void> {
 						// Remove blank lines 
 						s2tRow.logic = s2tRow.logic.replaceAll("(?m)^\\s+", "");
 
-						System.out.println(s2tRow.logic);
+						System.out.println("Original\r\n"+ s2tRow.logic);
 
 						String optimLogic = "";
 						
@@ -432,20 +480,35 @@ public class Mapping extends SwingWorker<Void, Void> {
 
 					
 
-					s2tTargetInstance.add(s2tRow);
+					s2tTargetInstance.s2tRows.add(s2tRow);
 					// if (i>5)break;
-					setProgress((int)(5+((float)i/nTgtFlds)*90));
-					
+					if (isCancelled()){
+						break;
+					}else {
+						setProgress((int)(5+((float)i/nTgtFlds)*90));
+						publish(targetInstanceName);;
+					}
 				}
 			} catch (XPathExpressionException ex) {
 				logger.log(Level.SEVERE, null, ex);
 			}
+			if (isCancelled()){
+				break;
+			}
+			s2tTargetInstance.targetInstanceName = targetInstanceName;
 			s2tAllTargetInstances.add(s2tTargetInstance);
 		}
-
-		logger.log(Level.INFO, s2tAllTargetInstances.get(0).get(0).tgtFld);
-		setProgress(100);
+		if (!isCancelled()){
+			setProgress(100);
+		}
+		
 		return s2tAllTargetInstances;
+	}
+
+	@Override
+	protected void process(List<String> chunks) {
+		mainWindow.setStatusMessage("Processing target instance: "+chunks.get(0));
+		super.process(chunks);
 	}
 
 	private InstanceField getFromField(String toInstance, String toField) {
@@ -454,6 +517,7 @@ public class Mapping extends SwingWorker<Void, Void> {
 
 		try {
 			String xPathExpr = "./CONNECTOR[@TOFIELD='" + toField + "' and @TOINSTANCE='" + toInstance + "']";
+			logger.log(Level.INFO,"XPath: "+xPathExpr);
 			connectorNode = (Node) xPath.evaluate(xPathExpr, mappingNode, XPathConstants.NODE);
 			if (connectorNode != null) {
 				instFld.field = connectorNode.getAttributes().getNamedItem("FROMFIELD").getNodeValue();
@@ -518,11 +582,13 @@ public class Mapping extends SwingWorker<Void, Void> {
 			trfLogic = getLogicFromEXP(trfNode, instanceField.field);
 			
 			//Check for any unconnected lookup in the logic
+			logger.log(Level.INFO, "Logic from expression "+instance.name+": "+trfLogic);
 			Pattern pattern= Pattern.compile(":LKP\\.[_A-Za-z0-9]*\\(");
 			Matcher matcher= pattern.matcher(trfLogic);
 			while(matcher.find()){
 				String lkpStr = matcher.group();
 				String lkpName = lkpStr.substring(5,lkpStr.length()-1);
+				logger.log(Level.INFO, "Unconnected Lookup found: "+lkpName);
 				if (!lookups.containsKey(lkpName)){
 					getUnconnectedLookup(lkpName);
 				}
@@ -545,7 +611,6 @@ public class Mapping extends SwingWorker<Void, Void> {
 			trfLogic = getLogicFromAGG(trfNode, instanceField.field);
 		}
 
-		System.out.println("trfLogic=" + trfLogic);
 		logic = trfLogic;
 
 		if (trfLogic.isEmpty())
@@ -667,11 +732,11 @@ public class Mapping extends SwingWorker<Void, Void> {
 			Node trfFldNode = (Node) xPath.evaluate("./TRANSFORMFIELD[@NAME='" + field + "']", trfNode,
 					XPathConstants.NODE);
 			String fldType = trfFldNode.getAttributes().getNamedItem("PORTTYPE").getNodeValue();
-			System.out.println(fldType);
 			if (fldType.equals("OUTPUT")) {
 				String expStr = trfFldNode.getAttributes().getNamedItem("EXPRESSION").getNodeValue();
 				logic = field + " = " + expStr + "\r\n";
-				String varExp = getLogicFromEXPVar(trfNode, field, expStr);
+				logger.log(Level.INFO,"Output Port Expression: "+logic);
+				String varExp = getLogicFromEXPVar(trfNode, field, expStr, new ArrayList<String>());
 				if (!varExp.isEmpty()) {
 					logic = varExp + "\r\n" + logic;
 				}
@@ -682,7 +747,7 @@ public class Mapping extends SwingWorker<Void, Void> {
 		return logic;
 	}
 
-	private String getLogicFromEXPVar(Node trfNode, String fldName, String fldExp) {
+	private String getLogicFromEXPVar(Node trfNode, String fldName, String fldExp, ArrayList<String> seenVarPorts) {
 		String logic = "";
 		try {
 			String xPathExpr = "./TRANSFORMFIELD[@PORTTYPE='LOCAL VARIABLE' and @NAME!='" + fldName + "']";
@@ -695,13 +760,18 @@ public class Mapping extends SwingWorker<Void, Void> {
 				Matcher matcher = pattern.matcher(fldExp);
 
 				if (matcher.find()) {
+					//Avoid cyclic dependency
+					if (seenVarPorts.contains(varPortName)) continue;
+					
+					seenVarPorts.add(varPortName);
 					String varExp = varPort.getAttributes().getNamedItem("EXPRESSION").getNodeValue();
+					logger.log(Level.INFO, "Variable Port "+varPortName+" Expression: "+varExp);
 					if (!logic.isEmpty())
 						logic = varPortName + " = " + varExp + "\r\n" + logic;
 					else
 						logic = varPortName + " = " + varExp;
 
-					String x = getLogicFromEXPVar(trfNode, varPortName, varExp);
+					String x = getLogicFromEXPVar(trfNode, varPortName, varExp,seenVarPorts);
 					if (!x.isEmpty()) {
 						logic = x + "\r\n" + logic;
 					}
@@ -715,8 +785,10 @@ public class Mapping extends SwingWorker<Void, Void> {
 	}
 
 	private void getUnconnectedLookup (String lkpInstName){
+		logger.log(Level.INFO, "In Method getUnconnectedLookp with Lookup instance name "+lkpInstName);
 		Instance lkpInst = getInstance(lkpInstName);
-		if (lkpInst.name == null) return;
+		logger.log(Level.INFO, "Lookup instance name: "+lkpInst.name);
+		if (lkpInst == null) return;
 		Node lkpTrfNode = getTrfNode(lkpInst);
 		if (lkpTrfNode == null ) return;
 		
@@ -801,7 +873,7 @@ public class Mapping extends SwingWorker<Void, Void> {
 				String logicFromVarPorts = getLogicFromAGGVar(trfNode, fldName, expStr);
 				
 				//Return the final logic
-				return "Group by on " + groupByPortsCSV + "\r\n" +
+				return  (groupByPortsCSV.isEmpty()?"":"Group by on " + groupByPortsCSV + "\r\n") +
 		                ((!logicFromVarPorts.isEmpty())? logicFromVarPorts + "\r\n":"") +
 		                fldName + " = " + expStr + "\r\n" + " ";
 			}
@@ -865,7 +937,6 @@ public class Mapping extends SwingWorker<Void, Void> {
 			outInst.trfName = xPath.evaluate(
 					"string(//MAPPLET/INSTANCE[@NAME='" + outInstFld.instanceName + "']/@TRANSFORMATION_NAME)",
 					mappingNode);
-			System.out.println("mapplet transformation name:" + outInst.trfName);
 			outInst.reusable = xPath
 					.evaluate("string(//MAPPLET/INSTANCE[@NAME='" + outInstFld.instanceName + "']/@REUSABLE)",
 							mappingNode)
@@ -886,7 +957,6 @@ public class Mapping extends SwingWorker<Void, Void> {
 		try {
 			String trfName = xPath.evaluate("string(//INSTANCE[@NAME='" + instance.name + "' and @TRANSFORMATION_TYPE='"
 					+ instance.instanceType + "']/@TRANSFORMATION_NAME)", mpltNode);
-			System.out.println("instanceName=" + instance.name + " trfName =" + trfName);
 
 			Node trfNode = (Node) xPath.evaluate("//TRANSFORMATION[@NAME='" + trfName + "']", mpltNode,
 					XPathConstants.NODE);
@@ -922,6 +992,16 @@ public class Mapping extends SwingWorker<Void, Void> {
 			break;
 		case "Expression":
 			trfLogic = getLogicFromEXP(trfNode, fldName);
+			Pattern pattern= Pattern.compile(":LKP\\.[_A-Za-z0-9]*\\(");
+			Matcher matcher= pattern.matcher(trfLogic);
+			while(matcher.find()){
+				String lkpStr = matcher.group();
+				String lkpName = lkpStr.substring(5,lkpStr.length()-1);
+				logger.log(Level.INFO, "Unconnected Lookup found: "+lkpName);
+				if (!lookups.containsKey(lkpName)){
+					getUnconnectedLookup(lkpName);
+				}
+			}
 			break;
 		case "Lookup Procedure":
 			trfLogic = getLogicFromConnectedLookup(trfNode, fldName);
@@ -965,7 +1045,7 @@ public class Mapping extends SwingWorker<Void, Void> {
 	private Instance getInstance(String instanceName) {
 		Instance instance = new Instance();
 		try {
-			String xPathExprInstance = ".//INSTANCE[@NAME='" + instanceName + "']";
+			String xPathExprInstance = "//INSTANCE[translate(@NAME,'abcdefghijklmnopqrstuvwxyz','ABCDEFGHIJKLMNOPQRSTUVWXYZ')='" + instanceName.toUpperCase() + "']";
 			Node instanceNode = (Node) xPath.evaluate(xPathExprInstance, mappingNode, XPathConstants.NODE);
 
 			instance.name = instanceNode.getAttributes().getNamedItem("NAME").getNodeValue();
@@ -992,9 +1072,10 @@ public class Mapping extends SwingWorker<Void, Void> {
 			String shortcutTrfName = (String) xPath.evaluate(
 					"//SHORTCUT[@NAME='" + instance.trfName + "']/@REFOBJECTNAME", MainWindow.xmlDocument,
 					XPathConstants.STRING);
-			System.out.println("Shortcut Transformation Name" + shortcutTrfName);
+			
 			if (!shortcutTrfName.isEmpty()) {
 				instance.trfName = shortcutTrfName;
+				logger.log(Level.INFO, "Shortcut Transformation Name" + shortcutTrfName);
 			}
 
 		} catch (XPathExpressionException e) {
@@ -1010,7 +1091,6 @@ public class Mapping extends SwingWorker<Void, Void> {
 					Node folderContent = folderContentList.item(j);
 					if (folderContent.getNodeName().equals("#text"))
 						continue;
-					System.out.println(folderContent.getNodeName());
 					if (folderContent.getAttributes().getNamedItem("NAME").getNodeValue().equals(instance.trfName)) {
 						/*
 						 * WARNING: if the XML doc contains more than one FOLDER
@@ -1078,22 +1158,50 @@ public class Mapping extends SwingWorker<Void, Void> {
 			if (!srcTblFld.containsKey(srcFld.tblName+srcFld.fldName))
 				srcTblFld.put(srcFld.tblName+srcFld.fldName, srcFld);
 			
+			if (!sourceTables.contains(srcFld.tblName)){
+				sourceTables.add(srcFld.tblName);
+			}
+			
 		} catch (XPathExpressionException ex) {
 			
 			logger.log(Level.SEVERE, null, ex);
 		}
 
 	}
+	
+	public ArrayList<String> getSourceTableNames(){
+		return sourceTables;
+	}
 
 	@Override
 	protected Void doInBackground() throws Exception {
 		setProgress(5);
-		ArrayList<ArrayList<S2TRow>> s2t = createS2T();
-		setProgress(100);
-		mainWindow.outputToExcel(s2t);
-		mainWindow.enableUserInteraction();
+		ArrayList<S2TForTargetInstance> s2t = createS2T();
+		if(!isCancelled()){
+			SQ srcQueries = getSQQuery();
+			logger.log(Level.INFO, "Writing data to Excel");
+			mainWindow.outputToExcel(srcQueries,s2t);
+			setProgress(99);
+		} 
 		return null;
 	}
 	
+	@Override
+	protected void done() {
+		super.done();
+		if (isCancelled()){
+			mainWindow.setStatusMessage("Cancelled S2T generation");
+		} else{
+			mainWindow.setStatusMessage("Done");
+		}
+		mainWindow.enableUserInteraction();
+	}
 
+	public class CustomComparator implements Comparator<TargetInstance> {
+	    @Override
+	    public int compare(TargetInstance o1, TargetInstance o2) {
+	        return o1.order - o2.order;
+	    }
+	}
+	
 }

@@ -5,11 +5,15 @@
 package com.samiksaha.infa.automateds2t;
 
 import java.awt.Component;
+import java.awt.Dimension;
 import java.beans.PropertyChangeEvent;
 import java.beans.PropertyChangeListener;
 import java.io.File;
+import java.io.FileNotFoundException;
+import java.io.FileOutputStream;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.ListIterator;
 import java.util.logging.Level;
@@ -37,7 +41,9 @@ import org.w3c.dom.Node;
 import org.w3c.dom.NodeList;
 import org.xml.sax.SAXException;
 
+import com.samiksaha.infa.automateds2t.Mapping.S2TForTargetInstance;
 import com.samiksaha.infa.automateds2t.Mapping.S2TRow;
+import com.samiksaha.infa.automateds2t.Mapping.TargetInstance;
 
 /**
  * 
@@ -58,13 +64,15 @@ public class MainWindow extends javax.swing.JFrame {
 	static Document xmlDocument;
 	XPath xPath;
 	ExcelOutput xlOutput;
-	private ProgressMonitor progressMonitor;
+	private ProgressWindow progressWindow;
 	Mapping mapping;
+	Logger logger;
 
 	/**
 	 * Creates new form MainWindow
 	 */
 	public MainWindow() {
+		logger = Logger.getLogger(MainWindow.class.getName());
 		this.mappingList = new ArrayList();
 		this.mappingListModel = new DefaultListModel();
 		this.mappingObjectList = new HashMap();
@@ -72,15 +80,13 @@ public class MainWindow extends javax.swing.JFrame {
 		this.targetInstanceListModel = new DefaultListModel();
 		try {
 			UIManager.setLookAndFeel(UIManager.getSystemLookAndFeelClassName());
-		} catch (UnsupportedLookAndFeelException | ClassNotFoundException
-				| InstantiationException | IllegalAccessException ex) {
-			Logger.getLogger(MainWindow.class.getName()).log(Level.SEVERE,
-					null, ex);
+		} catch (UnsupportedLookAndFeelException | ClassNotFoundException | InstantiationException
+				| IllegalAccessException ex) {
+			Logger.getLogger(MainWindow.class.getName()).log(Level.SEVERE, null, ex);
 		}
 		initComponents();
 
-		searchBox.getDocument().addDocumentListener(
-				new SearchBoxDocumentListener());
+		searchBox.getDocument().addDocumentListener(new SearchBoxDocumentListener());
 		jSplitPane1.setVisible(false);
 	}
 
@@ -106,9 +112,11 @@ public class MainWindow extends javax.swing.JFrame {
 		mappingInfoPanel = new javax.swing.JPanel();
 		jLabel2 = new javax.swing.JLabel();
 		jToolBar1 = new javax.swing.JToolBar();
+		jToolBar1.setFloatable(false);
 		btnFileOpen = new javax.swing.JButton();
 		btnGenerateS2T = new javax.swing.JButton();
 		jToolBar2 = new javax.swing.JToolBar();
+		jToolBar2.setPreferredSize(new Dimension(13, 20));
 		statusMessage = new javax.swing.JLabel();
 		jMenuBar1 = new javax.swing.JMenuBar();
 		jMenu1 = new javax.swing.JMenu();
@@ -122,56 +130,31 @@ public class MainWindow extends javax.swing.JFrame {
 		setTitle("Informatica S2T Generator");
 		setLocationByPlatform(true);
 
-		jSplitPane1.setBorder(javax.swing.BorderFactory
-				.createLineBorder(new java.awt.Color(153, 153, 153)));
-		jSplitPane1.setCursor(new java.awt.Cursor(
-				java.awt.Cursor.DEFAULT_CURSOR));
+		jSplitPane1.setBorder(javax.swing.BorderFactory.createLineBorder(new java.awt.Color(153, 153, 153)));
+		jSplitPane1.setCursor(new java.awt.Cursor(java.awt.Cursor.DEFAULT_CURSOR));
 
 		mappingJList.setModel(mappingListModel);
-		mappingJList
-				.addListSelectionListener(new javax.swing.event.ListSelectionListener() {
-					public void valueChanged(
-							javax.swing.event.ListSelectionEvent evt) {
-						mappingJListValueChanged(evt);
-					}
-				});
+		mappingJList.addListSelectionListener(new javax.swing.event.ListSelectionListener() {
+			public void valueChanged(javax.swing.event.ListSelectionEvent evt) {
+				mappingJListValueChanged(evt);
+			}
+		});
 		jScrollPane2.setViewportView(mappingJList);
 
-		javax.swing.GroupLayout jPanel1Layout = new javax.swing.GroupLayout(
-				jPanel1);
+		javax.swing.GroupLayout jPanel1Layout = new javax.swing.GroupLayout(jPanel1);
 		jPanel1.setLayout(jPanel1Layout);
-		jPanel1Layout
-				.setHorizontalGroup(jPanel1Layout
-						.createParallelGroup(
-								javax.swing.GroupLayout.Alignment.LEADING)
-						.addGroup(
-								jPanel1Layout
-										.createSequentialGroup()
-										.addGap(5, 5, 5)
-										.addGroup(
-												jPanel1Layout
-														.createParallelGroup(
-																javax.swing.GroupLayout.Alignment.LEADING)
-														.addComponent(
-																searchBox,
-																javax.swing.GroupLayout.Alignment.TRAILING)
-														.addComponent(
-																jScrollPane2,
-																javax.swing.GroupLayout.DEFAULT_SIZE,
-																202,
-																Short.MAX_VALUE))));
-		jPanel1Layout.setVerticalGroup(jPanel1Layout.createParallelGroup(
-				javax.swing.GroupLayout.Alignment.LEADING).addGroup(
-				jPanel1Layout
-						.createSequentialGroup()
-						.addGap(5, 5, 5)
-						.addComponent(searchBox,
-								javax.swing.GroupLayout.PREFERRED_SIZE, 28,
+		jPanel1Layout.setHorizontalGroup(jPanel1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+				.addGroup(jPanel1Layout.createSequentialGroup().addGap(5, 5, 5)
+						.addGroup(jPanel1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+								.addComponent(searchBox, javax.swing.GroupLayout.Alignment.TRAILING).addComponent(
+										jScrollPane2, javax.swing.GroupLayout.DEFAULT_SIZE, 202, Short.MAX_VALUE))));
+		jPanel1Layout.setVerticalGroup(jPanel1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+				.addGroup(jPanel1Layout.createSequentialGroup().addGap(5, 5, 5)
+						.addComponent(searchBox, javax.swing.GroupLayout.PREFERRED_SIZE, 28,
 								javax.swing.GroupLayout.PREFERRED_SIZE)
 						.addGap(5, 5, 5)
-						.addComponent(jScrollPane2,
-								javax.swing.GroupLayout.DEFAULT_SIZE, 383,
-								Short.MAX_VALUE).addGap(5, 5, 5)));
+						.addComponent(jScrollPane2, javax.swing.GroupLayout.DEFAULT_SIZE, 383, Short.MAX_VALUE)
+						.addGap(5, 5, 5)));
 
 		jSplitPane1.setLeftComponent(jPanel1);
 
@@ -186,8 +169,7 @@ public class MainWindow extends javax.swing.JFrame {
 		jSplitPane2.setBottomComponent(jTabbedPane1);
 
 		mappingInfoPanel.setPreferredSize(new java.awt.Dimension(233, 166));
-		mappingInfoPanel.setLayout(new BoxLayout(mappingInfoPanel,
-				BoxLayout.PAGE_AXIS));
+		mappingInfoPanel.setLayout(new BoxLayout(mappingInfoPanel, BoxLayout.PAGE_AXIS));
 		mappingInfoPanel.add(jLabel2);
 
 		jSplitPane2.setLeftComponent(mappingInfoPanel);
@@ -196,16 +178,14 @@ public class MainWindow extends javax.swing.JFrame {
 
 		getContentPane().add(jSplitPane1, java.awt.BorderLayout.CENTER);
 
-		jToolBar1.setBorder(javax.swing.BorderFactory.createEmptyBorder(1, 1,
-				1, 1));
+		jToolBar1.setBorder(javax.swing.BorderFactory.createEmptyBorder(1, 1, 1, 1));
 		jToolBar1.setRollover(true);
 
-		btnFileOpen.setIcon(new javax.swing.ImageIcon(getClass().getResource(
-				"/com/samiksaha/infa/automateds2t/res/open24x24.png"))); // NOI18N
+		btnFileOpen.setIcon(new javax.swing.ImageIcon(
+				getClass().getResource("/com/samiksaha/infa/automateds2t/res/open24x24.png"))); // NOI18N
 		btnFileOpen.setBorderPainted(false);
 		btnFileOpen.setFocusable(false);
-		btnFileOpen
-				.setHorizontalTextPosition(javax.swing.SwingConstants.CENTER);
+		btnFileOpen.setHorizontalTextPosition(javax.swing.SwingConstants.CENTER);
 		btnFileOpen.setPreferredSize(new java.awt.Dimension(35, 31));
 		btnFileOpen.setVerticalTextPosition(javax.swing.SwingConstants.BOTTOM);
 		btnFileOpen.addActionListener(new java.awt.event.ActionListener() {
@@ -215,16 +195,11 @@ public class MainWindow extends javax.swing.JFrame {
 		});
 		jToolBar1.add(btnFileOpen);
 
-		btnGenerateS2T
-				.setIcon(new javax.swing.ImageIcon(
-						getClass()
-								.getResource(
-										"/com/samiksaha/infa/automateds2t/res/excel_doc24x24.png"))); // NOI18N
+		btnGenerateS2T.setIcon(new javax.swing.ImageIcon(
+				getClass().getResource("/com/samiksaha/infa/automateds2t/res/excel_doc24x24.png"))); // NOI18N
 		btnGenerateS2T.setFocusable(false);
-		btnGenerateS2T
-				.setHorizontalTextPosition(javax.swing.SwingConstants.CENTER);
-		btnGenerateS2T
-				.setVerticalTextPosition(javax.swing.SwingConstants.BOTTOM);
+		btnGenerateS2T.setHorizontalTextPosition(javax.swing.SwingConstants.CENTER);
+		btnGenerateS2T.setVerticalTextPosition(javax.swing.SwingConstants.BOTTOM);
 		btnGenerateS2T.addActionListener(new java.awt.event.ActionListener() {
 			public void actionPerformed(java.awt.event.ActionEvent evt) {
 				btnGenerateS2TActionPerformed(evt);
@@ -246,9 +221,8 @@ public class MainWindow extends javax.swing.JFrame {
 
 		jMenu1.setText("File");
 
-		menuItemFileOpen.setAccelerator(javax.swing.KeyStroke.getKeyStroke(
-				java.awt.event.KeyEvent.VK_O,
-				java.awt.event.InputEvent.CTRL_MASK));
+		menuItemFileOpen.setAccelerator(
+				javax.swing.KeyStroke.getKeyStroke(java.awt.event.KeyEvent.VK_O, java.awt.event.InputEvent.CTRL_MASK));
 		menuItemFileOpen.setText("Open XML File...");
 		menuItemFileOpen.addActionListener(new java.awt.event.ActionListener() {
 			public void actionPerformed(java.awt.event.ActionEvent evt) {
@@ -280,30 +254,24 @@ public class MainWindow extends javax.swing.JFrame {
 		btnFileOpenActionPerformed(evt);
 	}// GEN-LAST:event_menuItemFileOpenActionPerformed
 
-	private void mappingJListValueChanged(
-			javax.swing.event.ListSelectionEvent evt) {// GEN-FIRST:event_mappingJListValueChanged
+	private void mappingJListValueChanged(javax.swing.event.ListSelectionEvent evt) {// GEN-FIRST:event_mappingJListValueChanged
 		if (!mappingJList.isSelectionEmpty()) {
 			String mappingName = mappingJList.getSelectedValue().toString();
 			Mapping mapping;
-			if(mappingObjectList.containsKey(mappingName))
+			if (mappingObjectList.containsKey(mappingName))
 				mapping = (Mapping) mappingObjectList.get(mappingName);
-			else{
+			else {
 				mapping = new Mapping(this, mappingNodeNamedList.get(mappingName));
-				mappingObjectList.put(mapping.getName(),mapping);
+				mappingObjectList.put(mapping.getName(), mapping);
 			}
 			String description = mapping.getDescription();
 			int trfCount = mapping.getTransformationCount();
 			String targetTables = mapping.getTargetTableNames().toString();
 
 			JLabel descriptionLabel = new JLabel(
-					description.trim().isEmpty() ? ""
-							: "<html><p><b>Description</b>: " + description
-									+ "</p></html>");
-			JLabel targetTablesLabel = new JLabel("<html><b>Targets</b>: "
-					+ targetTables + "</html>");
-			JLabel trfCountLabel = new JLabel(
-					"<html><b>Number of Transformations</b>: " + trfCount
-							+ "<html>");
+					description.trim().isEmpty() ? "" : "<html><p><b>Description</b>: " + description + "</p></html>");
+			JLabel targetTablesLabel = new JLabel("<html><b>Targets</b>: " + targetTables + "</html>");
+			JLabel trfCountLabel = new JLabel("<html><b>Number of Transformations</b>: " + trfCount + "<html>");
 
 			mappingInfoPanel.removeAll();
 			mappingInfoPanel.add(descriptionLabel);
@@ -311,14 +279,12 @@ public class MainWindow extends javax.swing.JFrame {
 			mappingInfoPanel.add(trfCountLabel);
 			mappingInfoPanel.updateUI();
 
-			ArrayList<String> targetInstances = mapping.getTargetInstanceList();
+			ArrayList<TargetInstance> targetInstances = mapping.getTargetInstanceList();
 
 			targetInstanceListModel.clear();
-			ListIterator<String> targetInstanceIterator = targetInstances
-					.listIterator();
+			ListIterator<TargetInstance> targetInstanceIterator = targetInstances.listIterator();
 			while (targetInstanceIterator.hasNext()) {
-				targetInstanceListModel.addElement(targetInstanceIterator
-						.next());
+				targetInstanceListModel.addElement(targetInstanceIterator.next().name);
 			}
 		}
 
@@ -326,47 +292,36 @@ public class MainWindow extends javax.swing.JFrame {
 
 	private void btnFileOpenActionPerformed(java.awt.event.ActionEvent evt) {// GEN-FIRST:event_btnFileOpenActionPerformed
 		final JFileChooser fc = new JFileChooser();
-		FileNameExtensionFilter filter = new FileNameExtensionFilter(
-				"XML Files", "xml");
+		FileNameExtensionFilter filter = new FileNameExtensionFilter("XML Files", "xml");
 		fc.setFileFilter(filter);
 
 		int returnVal = fc.showOpenDialog(this);
 
-
 		if (returnVal == JFileChooser.APPROVE_OPTION) {
 			File file = fc.getSelectedFile();
 			try {
-				DocumentBuilderFactory builderFactory = DocumentBuilderFactory
-						.newInstance();
+				DocumentBuilderFactory builderFactory = DocumentBuilderFactory.newInstance();
 				builderFactory.setValidating(false);
-				builderFactory.setFeature(
-						"http://xml.org/sax/features/namespaces", false);
-				builderFactory.setFeature(
-						"http://xml.org/sax/features/validation", false);
-				builderFactory
-						.setFeature(
-								"http://apache.org/xml/features/nonvalidating/load-dtd-grammar",
-								false);
-				builderFactory
-						.setFeature(
-								"http://apache.org/xml/features/nonvalidating/load-external-dtd",
-								false);
+				builderFactory.setFeature("http://xml.org/sax/features/namespaces", false);
+				builderFactory.setFeature("http://xml.org/sax/features/validation", false);
+				builderFactory.setFeature("http://apache.org/xml/features/nonvalidating/load-dtd-grammar", false);
+				builderFactory.setFeature("http://apache.org/xml/features/nonvalidating/load-external-dtd", false);
 
 				DocumentBuilder builder = builderFactory.newDocumentBuilder();
 				xmlDocument = builder.parse(file);
 				xPath = XPathFactory.newInstance().newXPath();
 
 				mappingNodeList = xmlDocument.getElementsByTagName("MAPPING");
-				
+
 				System.out.println("list of mapping nodes returned");
 				mappingObjectList.clear();
-				
+
 				mappingNodeNamedList.clear();
-				for (int i = 0; i < mappingNodeList.getLength(); i++){
+				for (int i = 0; i < mappingNodeList.getLength(); i++) {
 					String mappingName = mappingNodeList.item(i).getAttributes().getNamedItem("NAME").getNodeValue();
-					mappingNodeNamedList.put(mappingName,mappingNodeList.item(i));
+					mappingNodeNamedList.put(mappingName, mappingNodeList.item(i));
 				}
-				
+
 				mappingList.clear();
 				mappingList.addAll(mappingNodeNamedList.keySet());
 
@@ -383,50 +338,61 @@ public class MainWindow extends javax.swing.JFrame {
 		if (!mappingJList.isSelectionEmpty()) {
 			String mappingName = mappingJList.getSelectedValue().toString();
 			mapping = (Mapping) mappingObjectList.get(mappingName);
-			
+
 			if (!targetInstanceJList.isSelectionEmpty())
 				mapping.setTargetInstancesForS2T((ArrayList<String>) targetInstanceJList.getSelectedValuesList());
 
 			final JFileChooser fc = new JFileChooser();
-			int returnVal = fc.showSaveDialog(this);
-			FileNameExtensionFilter filter = new FileNameExtensionFilter(
-					"Excel files", "xlsx");
+			fc.setSelectedFile(new File(mappingName + ".xlsx"));
+			FileNameExtensionFilter filter = new FileNameExtensionFilter("Excel files", "xlsx");
 			fc.setFileFilter(filter);
+			fc.setAcceptAllFileFilterUsed(false);
+			int returnVal = fc.showSaveDialog(this);
 
 			if (returnVal == JFileChooser.APPROVE_OPTION) {
-				xlOutput = new ExcelOutput(fc.getSelectedFile());
-				xlOutput.createWorksheet(mappingName);
-				xlOutput.addHeader("Targets");
-				xlOutput.addBlankRow();
-				xlOutput.addFieldMappingsHeader();
-				progressMonitor = new ProgressMonitor(MainWindow.this, "Builing S2T",
-						"", 0, 100);
-				progressMonitor.setMillisToDecideToPopup(0);
-				progressMonitor.setMillisToPopup(0);
+				try {
+					File file = fc.getSelectedFile();
+					
+					FileOutputStream fos = new FileOutputStream(file);
+					fos.close();
+					xlOutput = new ExcelOutput(file);
+					xlOutput.createWorksheet(mappingName);
 
-				mapping.addPropertyChangeListener(new PropertyChangeListener() {
+					progressWindow = new ProgressWindow();
 
-					@Override
-					public void propertyChange(PropertyChangeEvent evt) {
-						if ("progress" == evt.getPropertyName()) {
-							int progress = (Integer) evt.getNewValue();
-							progressMonitor.setProgress(progress);
-							String message = String.format("Completed %d%%.\n",
-									progress);
-							progressMonitor.setNote(message);
-							if (progressMonitor.isCanceled() || mapping.isDone()) {
-								if (progressMonitor.isCanceled()) {
-									mapping.cancel(true);
-								} else {
-									progressMonitor.close();
+					mapping.addPropertyChangeListener(new PropertyChangeListener() {
+
+						@Override
+						public void propertyChange(PropertyChangeEvent evt) {
+							if ("progress" == evt.getPropertyName()) {
+								int progress = (Integer) evt.getNewValue();
+								progressWindow.setProgress(progress);
+								String message = String.format("Completed %d%%.\n", progress);
+								progressWindow.setNote(message);
+								if (progressWindow.isCanceled() || mapping.isDone()) {
+									if (progressWindow.isCanceled()) {
+										logger.log(Level.INFO, "User cancelled S2T generation.");
+										mapping.cancel(true);
+									} else {
+										logger.log(Level.INFO, "S2T generation complete!");
+										progressWindow.dispose();
+									}
 								}
 							}
-						}
 
-					}
-				});
-				disableUserInteraction();
-				mapping.execute();
+						}
+					});
+					disableUserInteraction();
+					mapping.execute();
+					progressWindow.setLocationRelativeTo(this);
+					progressWindow.setVisible(true);
+				} catch (FileNotFoundException e) {
+					JOptionPane.showMessageDialog(this,
+							"Cannot access the selected file! Please check the file is accessible and not used by another process.");
+				} catch (IOException e) {
+					// TODO Auto-generated catch block
+					e.printStackTrace();
+				}
 			}
 		} else {
 			JOptionPane.showMessageDialog(this, "Please select a mapping");
@@ -467,26 +433,61 @@ public class MainWindow extends javax.swing.JFrame {
 		}
 
 	}
-	
-	public void outputToExcel(ArrayList<ArrayList<S2TRow>> s2t){
-		ListIterator<ArrayList<S2TRow>> iter = s2t.listIterator();
+
+	public void outputToExcel(Mapping.SQ srcQueries, ArrayList<S2TForTargetInstance> s2t) {
+		logger.log(Level.INFO, "In method outputToExcel");
+		xlOutput.addBlankRow();
+		boolean sqSQLQuery = false;
+		xlOutput.addHeader("Source");
+		for (int i = 0; i < srcQueries.sqQuery.size(); i++) {
+			if (!srcQueries.sqQuery.get(i).isEmpty()) {
+				sqSQLQuery = true;
+				xlOutput.addQuery(srcQueries.sqQuery.get(i));
+				xlOutput.addBlankRow();
+			}
+		}
+
+		for (int i = 0; i < srcQueries.sqFilter.size(); i++) {
+			if (!(srcQueries.sqFilter.get(i).trim().isEmpty() || srcQueries.sqFilter.get(i) == null)) {
+				sqSQLQuery = true;
+				xlOutput.writeCell("Source Filter:", 3);
+				xlOutput.addQuery(srcQueries.sqFilter.get(i));
+			}
+		}
+
+		if (sqSQLQuery == false) {
+			ArrayList<String> sourceTables = mapping.getSourceTableNames();
+			for (int i = 0; i < sourceTables.size(); i++) {
+				xlOutput.writeCell(sourceTables.get(i), 3);
+			}
+		}
+
+		xlOutput.addBlankRow();
+
+		ListIterator<S2TForTargetInstance> iter = s2t.listIterator();
 		while (iter.hasNext()) {
-			ArrayList<S2TRow> s2tRows = (ArrayList<S2TRow>) iter.next();
+			S2TForTargetInstance s2tForTargetInstance = iter.next();
+			logger.log(Level.INFO, "Writing mapping for target instance " + s2tForTargetInstance.targetInstanceName);
+			xlOutput.addSectionHeader("Field level mapping for: " + s2tForTargetInstance.targetInstanceName);
+			xlOutput.addFieldMappingsHeader();
+			ArrayList<S2TRow> s2tRows = s2tForTargetInstance.s2tRows;
+			logger.log(Level.INFO, "No. of rows: " + s2tForTargetInstance.s2tRows.size());
 			ListIterator<S2TRow> iter1 = s2tRows.listIterator();
 			while (iter1.hasNext()) {
 				S2TRow s2tRow = (S2TRow) iter1.next();
-				xlOutput.addFieldMappingRow(s2tRow.S2TsrcTblFld,
-						s2tRow.tgtTbl, s2tRow.tgtFld, s2tRow.logic,
-						s2tRow.tgtFldType, s2tRow.tgtFldNullable,
-						s2tRow.tgtFldKeyType);
+				xlOutput.addFieldMappingRow(s2tRow.S2TsrcTblFld, s2tRow.tgtTbl, s2tRow.tgtFld, s2tRow.logic,
+						s2tRow.tgtFldType, s2tRow.tgtFldNullable, s2tRow.tgtFldKeyType);
 				/*
-				System.out.println(s2tRow.tgtTbl + s2tRow.tgtFld
-						+ s2tRow.logic + s2tRow.tgtFldType
-						+ s2tRow.tgtFldNullable + s2tRow.tgtFldKeyType+" source:");
-				*/
+				 * System.out.println(s2tRow.tgtTbl + s2tRow.tgtFld +
+				 * s2tRow.logic + s2tRow.tgtFldType + s2tRow.tgtFldNullable +
+				 * s2tRow.tgtFldKeyType+" source:");
+				 */
+
 			}
 
 		}
+		xlOutput.addBlankRow();
+		xlOutput.addLookupDetails(mapping.lookups);
 		xlOutput.close();
 	}
 
@@ -505,25 +506,24 @@ public class MainWindow extends javax.swing.JFrame {
 		 * /tutorial/uiswing/lookandfeel/plaf.html
 		 */
 		try {
-			for (javax.swing.UIManager.LookAndFeelInfo info : javax.swing.UIManager
-					.getInstalledLookAndFeels()) {
+			for (javax.swing.UIManager.LookAndFeelInfo info : javax.swing.UIManager.getInstalledLookAndFeels()) {
 				if ("Nimbus".equals(info.getName())) {
 					javax.swing.UIManager.setLookAndFeel(info.getClassName());
 					break;
 				}
 			}
 		} catch (ClassNotFoundException ex) {
-			java.util.logging.Logger.getLogger(MainWindow.class.getName()).log(
-					java.util.logging.Level.SEVERE, null, ex);
+			java.util.logging.Logger.getLogger(MainWindow.class.getName()).log(java.util.logging.Level.SEVERE, null,
+					ex);
 		} catch (InstantiationException ex) {
-			java.util.logging.Logger.getLogger(MainWindow.class.getName()).log(
-					java.util.logging.Level.SEVERE, null, ex);
+			java.util.logging.Logger.getLogger(MainWindow.class.getName()).log(java.util.logging.Level.SEVERE, null,
+					ex);
 		} catch (IllegalAccessException ex) {
-			java.util.logging.Logger.getLogger(MainWindow.class.getName()).log(
-					java.util.logging.Level.SEVERE, null, ex);
+			java.util.logging.Logger.getLogger(MainWindow.class.getName()).log(java.util.logging.Level.SEVERE, null,
+					ex);
 		} catch (javax.swing.UnsupportedLookAndFeelException ex) {
-			java.util.logging.Logger.getLogger(MainWindow.class.getName()).log(
-					java.util.logging.Level.SEVERE, null, ex);
+			java.util.logging.Logger.getLogger(MainWindow.class.getName()).log(java.util.logging.Level.SEVERE, null,
+					ex);
 		}
 		// </editor-fold>
 
@@ -535,32 +535,38 @@ public class MainWindow extends javax.swing.JFrame {
 			}
 		});
 	}
-	
-	public void disableUserInteraction(){
+
+	public void disableUserInteraction() {
 		Component[] components = jMenuBar1.getComponents();
-		for (int i=0; i < components.length; i++){
+		for (int i = 0; i < components.length; i++) {
 			components[i].setEnabled(false);
 		}
-		
+
 		components = jToolBar1.getComponents();
-			for (int i=0; i < components.length; i++){
-				components[i].setEnabled(false);
-			}
+		for (int i = 0; i < components.length; i++) {
+			components[i].setEnabled(false);
+		}
 		searchBox.setEnabled(false);
 	}
-	
-	public void enableUserInteraction(){
+
+	public void enableUserInteraction() {
 		Component[] components = jMenuBar1.getComponents();
-		for (int i=0; i < components.length; i++){
+		for (int i = 0; i < components.length; i++) {
 			components[i].setEnabled(true);
 		}
-		
+
 		components = jToolBar1.getComponents();
-			for (int i=0; i < components.length; i++){
-				components[i].setEnabled(true);
-			}
+		for (int i = 0; i < components.length; i++) {
+			components[i].setEnabled(true);
+		}
 		searchBox.setEnabled(true);
+		if (progressWindow.isVisible()) progressWindow.dispose();
 	}
+
+	public void setStatusMessage(String status) {
+		statusMessage.setText(status);
+	}
+	
 
 	// Variables declaration - do not modify//GEN-BEGIN:variables
 	private javax.swing.JButton btnFileOpen;
