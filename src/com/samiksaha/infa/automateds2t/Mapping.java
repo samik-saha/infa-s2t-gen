@@ -34,15 +34,14 @@ import com.samiksaha.infa.automateds2t.Mapping.TableField;
 import com.samiksaha.infa.automateds2t.Mapping.TargetInstance;
 
 /**
- * <b>Mapping.java</b>
- * This class represents a Informatica mapping and all associated properties and 
- * methods associated with it
+ * <b>Mapping.java</b> This class represents a Informatica mapping and all
+ * associated properties and methods associated with it
  * 
  * @author Samik Saha
  * 
  */
 public class Mapping extends SwingWorker<Void, String> {
-	
+
 	MainWindow mainWindow;
 	/**
 	 * mappingNode contains the XML node for the mapping. Mapping node does not
@@ -58,7 +57,7 @@ public class Mapping extends SwingWorker<Void, String> {
 	private String mappingName;
 	private String mappingDescription;
 	private int transformationCount;
-	private ArrayList<String> sourceTables=new ArrayList<>();
+	private ArrayList<String> sourceTables = new ArrayList<>();
 	private ArrayList<String> targetTables;
 	private Logger logger;
 
@@ -79,39 +78,38 @@ public class Mapping extends SwingWorker<Void, String> {
 	 * backtracking a mapplet in method "getLogicFromMappletTransformation"
 	 */
 	private ArrayList<String> mpltInPorts;
-	
-	
+
 	public HashMap<String, Lookup> lookups;
 
 	public void setTargetInstancesForS2T(ArrayList<String> targetInstancesForS2T) {
 		this.targetInstancesForS2T.clear();
 		Iterator<TargetInstance> iter = targetInstances.iterator();
-		while(iter.hasNext()){
+		while (iter.hasNext()) {
 			TargetInstance t = iter.next();
-			if (targetInstancesForS2T.contains(t.name)){
+			if (targetInstancesForS2T.contains(t.name)) {
 				this.targetInstancesForS2T.add(t);
 			}
 		}
-		Collections.sort(this.targetInstancesForS2T,new CustomComparator());
+		Collections.sort(this.targetInstancesForS2T, new CustomComparator());
 	}
 
-	private HashMap <String,TableField> srcTblFld;
+	private HashMap<String, TableField> srcTblFld;
 
 	public class SQ {
 		ArrayList<String> sqQuery = new ArrayList<String>();
 		ArrayList<String> sqFilter = new ArrayList<String>();
 	}
 
-	public class Lookup{
+	public class Lookup {
 		String lkpName;
 		String lkpTblName;
-        String lkpQuery;
-        String lkpSrcFilter;
-        String lkpCondition;
-        String returnField;
-        Boolean connected;
+		String lkpQuery;
+		String lkpSrcFilter;
+		String lkpCondition;
+		String returnField;
+		Boolean connected;
 	}
-	
+
 	public class S2TRow {
 		String tgtTbl;
 		String tgtFld;
@@ -125,16 +123,15 @@ public class Mapping extends SwingWorker<Void, String> {
 			this.S2TsrcTblFld = new ArrayList<TableField>();
 		}
 	}
-	
-	public class S2TForTargetInstance{
+
+	public class S2TForTargetInstance {
 		String targetInstanceName;
 		ArrayList<S2TRow> s2tRows;
-		
-		public S2TForTargetInstance(){
+
+		public S2TForTargetInstance() {
 			this.s2tRows = new ArrayList<>();
 		}
 	}
-
 
 	public class TableField {
 		String tblName;
@@ -154,7 +151,7 @@ public class Mapping extends SwingWorker<Void, String> {
 		String trfName;
 		String instanceType;
 	}
-	
+
 	public class TargetInstance {
 		int order;
 		String name;
@@ -178,6 +175,9 @@ public class Mapping extends SwingWorker<Void, String> {
 			e.printStackTrace();
 		}
 
+	}
+
+	public void loadMappingDetails() {
 		try {
 			mappingName = (String) xPath.compile("./@NAME").evaluate(mappingNode, XPathConstants.STRING);
 			mappingDescription = (String) xPath.compile("./@DESCRIPTION").evaluate(mappingNode, XPathConstants.STRING);
@@ -185,27 +185,27 @@ public class Mapping extends SwingWorker<Void, String> {
 		} catch (XPathExpressionException ex) {
 			logger.log(Level.SEVERE, null, ex);
 		}
-		
+
 		targetInstances = new ArrayList<TargetInstance>();
 		NodeList tgtInstList;
 		try {
-			tgtInstList = (NodeList) xPath.evaluate("//TARGETLOADORDER", mappingNode, XPathConstants.NODESET);
+			tgtInstList = (NodeList) xPath.evaluate("./TARGETLOADORDER", mappingNode, XPathConstants.NODESET);
 			TargetInstance t;
-			for(int i = 0; i<tgtInstList.getLength(); i++){
+			for (int i = 0; i < tgtInstList.getLength(); i++) {
 				Node node = tgtInstList.item(i);
-				t=new TargetInstance();
+				t = new TargetInstance();
 				t.order = Integer.parseInt(node.getAttributes().getNamedItem("ORDER").getNodeValue());
 				t.name = node.getAttributes().getNamedItem("TARGETINSTANCE").getNodeValue();
 				targetInstances.add(t);
 			}
-			Collections.sort(targetInstances,new CustomComparator());
+			Collections.sort(targetInstances, new CustomComparator());
 			targetInstancesForS2T = (ArrayList<TargetInstance>) targetInstances.clone();
-			
+
 		} catch (XPathExpressionException e) {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
 		}
-		
+
 		targetTables = findTargetTables();
 		transformationCount = countTransformations();
 	}
@@ -323,20 +323,19 @@ public class Mapping extends SwingWorker<Void, String> {
 		String tgtFldDataType;
 		String tgtFldPrec;
 		String tgtFldScale;
-		
+
 		/* Initialize Lookup array */
 		lookups = new HashMap<>();
 
 		/* Initialize source table/fields array */
 		srcTblFld = new HashMap<>();
-		
+
 		ListIterator<TargetInstance> iter = targetInstancesForS2T.listIterator();
 
 		while (iter.hasNext()) {
 			targetInstanceName = (String) iter.next().name;
 			s2tTargetInstance = new S2TForTargetInstance();
-			logger.log(Level.INFO,
-					"Processing target instance " + targetInstanceName);
+			logger.log(Level.INFO, "Processing target instance " + targetInstanceName);
 
 			try {
 				String tgtTbl = (String) xPath
@@ -354,16 +353,14 @@ public class Mapping extends SwingWorker<Void, String> {
 
 				if (!shortcutTgtTbl.isEmpty()) {
 					tgtTbl = shortcutTgtTbl;
-					logger.log(Level.INFO,
-							"Found Shortcut object reference: " + tgtTbl);
+					logger.log(Level.INFO, "Found Shortcut object reference: " + tgtTbl);
 				}
 
 				targetFields = (NodeList) xPath.evaluate("//TARGET[@NAME='" + tgtTbl + "']/TARGETFIELD",
 						MainWindow.xmlDocument, XPathConstants.NODESET);
 
-				logger.log(Level.INFO,
-						"No. of target fields found: " + targetFields.getLength());
-				
+				logger.log(Level.INFO, "No. of target fields found: " + targetFields.getLength());
+
 				int nTgtFlds = targetFields.getLength();
 
 				for (int i = 0; i < nTgtFlds; i++) {
@@ -379,47 +376,49 @@ public class Mapping extends SwingWorker<Void, String> {
 					s2tRow.tgtFldType = tgtFldDataType + "(" + tgtFldPrec
 							+ (tgtFldScale.equals("0") ? "" : "," + tgtFldScale) + ")";
 
-					logger.log(Level.INFO,
-							"Backtracking target field: " + s2tRow.tgtFld);
+					logger.log(Level.INFO, "Backtracking target field: " + s2tRow.tgtFld);
 
 					srcTblFld.clear();
 
 					InstanceField fromInstanceField = getFromField(targetInstanceName, s2tRow.tgtFld);
-					
+
 					if (fromInstanceField != null) {
 						s2tRow.logic = getLogic(fromInstanceField);
 						s2tRow.S2TsrcTblFld.addAll(srcTblFld.values());
-						
-						if (!s2tRow.tgtFld.equals(fromInstanceField.field)){				
-							s2tRow.logic = s2tRow.logic + "\r\n" + s2tRow.tgtFld +"="+fromInstanceField.field;
+
+						if (!s2tRow.tgtFld.equals(fromInstanceField.field)) {
+							s2tRow.logic = s2tRow.logic + "\r\n" + s2tRow.tgtFld + "=" + fromInstanceField.field;
 						}
-						
+
 						/*
-						 * Optimize/compact the logic removing unnecessary redundancy generating 
-						 * during backtracking.
+						 * Optimize/compact the logic removing unnecessary
+						 * redundancy generating during backtracking.
 						 */
-						// Remove blank lines 
+						// Remove blank lines
 						s2tRow.logic = s2tRow.logic.replaceAll("(?m)^\\s+", "");
 
-						System.out.println("Original\r\n"+ s2tRow.logic);
+						System.out.println("Original\r\n" + s2tRow.logic);
 
 						String optimLogic = "";
-						
+
 						// Split lines
 						String logicLines[] = s2tRow.logic.split("\\r?\\n");
 						String mergedLine = "";
 						String curLineSplit[];
-						
+
 						// Nothing to compact if only one line
-						if (logicLines.length == 1){	
+						if (logicLines.length == 1) {
 							optimLogic = s2tRow.logic;
-						}
-						else {
-							/* Loop until the 1 line before last line so that we have one more line
-							 * to look for for possible merge
+						} else {
+							/*
+							 * Loop until the 1 line before last line so that we
+							 * have one more line to look for for possible merge
 							 */
 							for (int j = 0; j < logicLines.length - 1; j++) {
-								/* If the last line was merged take the merged line as current line */
+								/*
+								 * If the last line was merged take the merged
+								 * line as current line
+								 */
 								if (!mergedLine.isEmpty()) {
 									curLineSplit = mergedLine.split("=", 2);
 								} else
@@ -427,19 +426,23 @@ public class Mapping extends SwingWorker<Void, String> {
 
 								String nextLineSplit[] = logicLines[j + 1].split("=", 2);
 
-								/* If the LHS of current line is equal to RHS of next line
-								 * then merge the lines together
+								/*
+								 * If the LHS of current line is equal to RHS of
+								 * next line then merge the lines together
 								 */
-								if (nextLineSplit.length == 2 && curLineSplit[0].trim().equals(nextLineSplit[1].trim())) {
+								if (nextLineSplit.length == 2
+										&& curLineSplit[0].trim().equals(nextLineSplit[1].trim())) {
 									mergedLine = nextLineSplit[0] + "=" + curLineSplit[1];
 								} else if (!mergedLine.isEmpty()) {
 									optimLogic = ((!optimLogic.isEmpty()) ? optimLogic + "\r\n" : "") + mergedLine;
 									mergedLine = "";
 								} else {
 									optimLogic = ((!optimLogic.isEmpty()) ? optimLogic + "\r\n" : "") + logicLines[j];
-									
-									/* As we are looping 1 line less than the last, include the last line if not
-									 * merged with the line before
+
+									/*
+									 * As we are looping 1 line less than the
+									 * last, include the last line if not merged
+									 * with the line before
 									 */
 									if (j == logicLines.length - 2) {
 										optimLogic = ((!optimLogic.isEmpty()) ? optimLogic + "\r\n" : "")
@@ -447,27 +450,30 @@ public class Mapping extends SwingWorker<Void, String> {
 									}
 								}
 							}
-							
-							/* If the last line was merged, it did not get a chance to be added to the
-							 * optimized logic, add it now.
+
+							/*
+							 * If the last line was merged, it did not get a
+							 * chance to be added to the optimized logic, add it
+							 * now.
 							 */
 							if (!mergedLine.isEmpty())
 								optimLogic = ((!optimLogic.isEmpty()) ? optimLogic + "\r\n" : "") + mergedLine;
 						}
-						
+
 						/*
-						 * Check if the logic is one line and is just source field equals to target field,
-						 * then just write "Straight Move"
+						 * Check if the logic is one line and is just source
+						 * field equals to target field, then just write
+						 * "Straight Move"
 						 */
-						if (optimLogic.split("\\r\\n").length == 1){
+						if (optimLogic.split("\\r\\n").length == 1) {
 							String[] logicSplit = optimLogic.split("=", 2);
-							if (logicSplit.length == 2 && s2tRow.S2TsrcTblFld.size()>0 &&
-									logicSplit[0].trim().equals(s2tRow.S2TsrcTblFld.get(0).fldName.trim()) &&
-									logicSplit[1].trim().equals(s2tRow.tgtFld.trim())){
+							if (logicSplit.length == 2 && s2tRow.S2TsrcTblFld.size() > 0
+									&& logicSplit[0].trim().equals(s2tRow.S2TsrcTblFld.get(0).fldName.trim())
+									&& logicSplit[1].trim().equals(s2tRow.tgtFld.trim())) {
 								optimLogic = "Straight Move";
 							}
 						}
-						
+
 						System.out.println("Optimized\n" + optimLogic);
 
 						s2tRow.logic = optimLogic;
@@ -478,36 +484,35 @@ public class Mapping extends SwingWorker<Void, String> {
 						s2tRow.logic = "";
 					}
 
-					
-
 					s2tTargetInstance.s2tRows.add(s2tRow);
 					// if (i>5)break;
-					if (isCancelled()){
+					if (isCancelled()) {
 						break;
-					}else {
-						setProgress((int)(5+((float)i/nTgtFlds)*90));
-						publish(targetInstanceName);;
+					} else {
+						setProgress((int) (5 + ((float) i / nTgtFlds) * 90));
+						publish(targetInstanceName);
+						;
 					}
 				}
 			} catch (XPathExpressionException ex) {
 				logger.log(Level.SEVERE, null, ex);
 			}
-			if (isCancelled()){
+			if (isCancelled()) {
 				break;
 			}
 			s2tTargetInstance.targetInstanceName = targetInstanceName;
 			s2tAllTargetInstances.add(s2tTargetInstance);
 		}
-		if (!isCancelled()){
+		if (!isCancelled()) {
 			setProgress(100);
 		}
-		
+
 		return s2tAllTargetInstances;
 	}
 
 	@Override
 	protected void process(List<String> chunks) {
-		mainWindow.setStatusMessage("Processing target instance: "+chunks.get(0));
+		mainWindow.setStatusMessage("Processing target instance: " + chunks.get(0));
 		super.process(chunks);
 	}
 
@@ -517,7 +522,7 @@ public class Mapping extends SwingWorker<Void, String> {
 
 		try {
 			String xPathExpr = "./CONNECTOR[@TOFIELD='" + toField + "' and @TOINSTANCE='" + toInstance + "']";
-			logger.log(Level.INFO,"XPath: "+xPathExpr);
+			logger.log(Level.INFO, "XPath: " + xPathExpr);
 			connectorNode = (Node) xPath.evaluate(xPathExpr, mappingNode, XPathConstants.NODE);
 			if (connectorNode != null) {
 				instFld.field = connectorNode.getAttributes().getNamedItem("FROMFIELD").getNodeValue();
@@ -565,49 +570,43 @@ public class Mapping extends SwingWorker<Void, String> {
 		if (instanceField.instanceName == null)
 			return logic;
 
-		logger.log(Level.INFO,
-				"Getting logic for " + instanceField.instanceName + "." + instanceField.field);
+		logger.log(Level.INFO, "Getting logic for " + instanceField.instanceName + "." + instanceField.field);
 
 		Instance instance = getInstance(instanceField.instanceName);
 		Node trfNode = getTrfNode(instance);
 
 		if (instanceField.instanceType.equals("Source Definition")) {
-			logger.log(Level.INFO,
-					instance.instanceType + " : " + instance.name + " : " + instance.trfName);
+			logger.log(Level.INFO, instance.instanceType + " : " + instance.name + " : " + instance.trfName);
 			getSourceFields(instanceField);
 			return "";
 		} else if (instanceField.instanceType.equals("Expression")) {
-			logger.log(Level.INFO,
-					instance.instanceType + " : " + instance.name + " : " + instance.trfName);
+			logger.log(Level.INFO, instance.instanceType + " : " + instance.name + " : " + instance.trfName);
 			trfLogic = getLogicFromEXP(trfNode, instanceField.field);
-			
-			//Check for any unconnected lookup in the logic
-			logger.log(Level.INFO, "Logic from expression "+instance.name+": "+trfLogic);
-			Pattern pattern= Pattern.compile(":LKP\\.[_A-Za-z0-9]*\\(");
-			Matcher matcher= pattern.matcher(trfLogic);
-			while(matcher.find()){
+
+			// Check for any unconnected lookup in the logic
+			logger.log(Level.INFO, "Logic from expression " + instance.name + ": " + trfLogic);
+			Pattern pattern = Pattern.compile(":LKP\\.[_A-Za-z0-9]*\\(");
+			Matcher matcher = pattern.matcher(trfLogic);
+			while (matcher.find()) {
 				String lkpStr = matcher.group();
-				String lkpName = lkpStr.substring(5,lkpStr.length()-1);
-				logger.log(Level.INFO, "Unconnected Lookup found: "+lkpName);
-				if (!lookups.containsKey(lkpName)){
+				String lkpName = lkpStr.substring(5, lkpStr.length() - 1);
+				logger.log(Level.INFO, "Unconnected Lookup found: " + lkpName);
+				if (!lookups.containsKey(lkpName)) {
 					getUnconnectedLookup(lkpName);
 				}
 			}
 		} else if (instanceField.instanceType.equals("Lookup Procedure")) {
-			logger.log(Level.INFO,
-					instance.instanceType + " : " + instance.name + " : " + instance.trfName);
+			logger.log(Level.INFO, instance.instanceType + " : " + instance.name + " : " + instance.trfName);
 			trfLogic = getLogicFromConnectedLookup(trfNode, instanceField.field);
-		}
-		else if (instanceField.instanceType.equals("Mapplet")) {
-			logger.log(Level.INFO,
-					instance.instanceType + " : " + instance.name + " : " + instance.trfName);
+		} else if (instanceField.instanceType.equals("Mapplet")) {
+			logger.log(Level.INFO, instance.instanceType + " : " + instance.name + " : " + instance.trfName);
 			trfLogic = getLogicFromMapplet(trfNode, instanceField.field);
-		} else if (instanceField.instanceType.equals("Router")){
+		} else if (instanceField.instanceType.equals("Router")) {
 			ArrayList<String> inPorts = getInPortsROUTER(trfNode, instanceField.field);
-			if (!inPorts.isEmpty())	trfLogic = instanceField.field + "=" + inPorts.get(0);
+			if (!inPorts.isEmpty())
+				trfLogic = instanceField.field + "=" + inPorts.get(0);
 		} else if (instanceField.instanceType.equals("Aggregator")) {
-			logger.log(Level.INFO,
-					instance.instanceType + " : " + instance.name + " : " + instance.trfName);
+			logger.log(Level.INFO, instance.instanceType + " : " + instance.name + " : " + instance.trfName);
 			trfLogic = getLogicFromAGG(trfNode, instanceField.field);
 		}
 
@@ -616,8 +615,7 @@ public class Mapping extends SwingWorker<Void, String> {
 		if (trfLogic.isEmpty())
 			trfLogic = instanceField.field;
 
-		logger.log(Level.INFO,
-				"Looking for input ports for " + instanceField.field + " in " + instance.name);
+		logger.log(Level.INFO, "Looking for input ports for " + instanceField.field + " in " + instance.name);
 		ArrayList<String> inPorts = getInPorts(trfNode, instance.instanceType, instanceField.field, trfLogic);
 
 		for (int i = 0; i < inPorts.size(); i++) {
@@ -653,6 +651,8 @@ public class Mapping extends SwingWorker<Void, String> {
 			return getInPortsUNION(trfNode, fldNm);
 		} else if (trfType.equals("Mapplet")) {
 			return mpltInPorts;
+		} else if (trfType.equals("Normalizer")) {
+			return getInPortsNormalizer(trfNode, fldNm);
 		}
 
 		ArrayList<String> inPorts = new ArrayList<String>();
@@ -667,8 +667,7 @@ public class Mapping extends SwingWorker<Void, String> {
 				Pattern pattern = Pattern.compile("\\b" + inPort + "\\b");
 				Matcher matcher = pattern.matcher(fldExp);
 				if (matcher.find()) {
-					logger.log(Level.INFO,
-							"Found input port: " + trfName + "." + inPort + " for " + fldNm);
+					logger.log(Level.INFO, "Found input port: " + trfName + "." + inPort + " for " + fldNm);
 					inPorts.add(inPort);
 				}
 			}
@@ -677,8 +676,34 @@ public class Mapping extends SwingWorker<Void, String> {
 		}
 
 		if (inPorts.isEmpty())
-			logger.log(Level.INFO,
-					"No input ports found in " + trfType + " " + trfName + " for " + fldNm);
+			logger.log(Level.INFO, "No input ports found in " + trfType + " " + trfName + " for " + fldNm);
+		return inPorts;
+	}
+
+	private ArrayList<String> getInPortsNormalizer(Node trfNode, String fldNm) {
+		String trfName = trfNode.getAttributes().getNamedItem("NAME").getNodeValue();// for
+																						// logging
+																						// purpose
+		ArrayList<String> inPorts = new ArrayList<String>();
+		String refSourceField;
+		NodeList inPortNodeList;
+		try {
+			/* Get REF_SOURCE_FIELD for the output column */
+			String xPathExpr = "./TRANSFORMFIELD[@PORTTYPE='OUTPUT' and @NAME='" + fldNm + "']/@REF_SOURCE_FIELD";
+			refSourceField = (String) xPath.evaluate(xPathExpr, trfNode, XPathConstants.STRING);
+			
+			/* Get Input ports corresponding to the REF_SOURCE_FIELD */
+			xPathExpr = "./TRANSFORMFIELD[@PORTTYPE='INPUT' and @REF_SOURCE_FIELD='" + refSourceField + "']/@NAME";
+			inPortNodeList = (NodeList) xPath.evaluate(xPathExpr, trfNode, XPathConstants.NODESET);
+			
+			for (int i = 0; i<inPortNodeList.getLength();i++){
+				String inPort = inPortNodeList.item(i).getNodeValue();
+				logger.log(Level.INFO, "Found input port: " + trfName + "." + inPort + " for " + fldNm);
+				inPorts.add(inPort);
+			}
+		} catch (XPathExpressionException ex) {
+			logger.log(Level.SEVERE, null, ex);
+		}
 		return inPorts;
 	}
 
@@ -691,8 +716,7 @@ public class Mapping extends SwingWorker<Void, String> {
 		try {
 			String xPathExpr = "./TRANSFORMFIELD[@PORTTYPE='OUTPUT' and @NAME='" + fldNm + "']/@REF_FIELD";
 			inPort = (String) xPath.evaluate(xPathExpr, trfNode, XPathConstants.STRING);
-			logger.log(Level.INFO,
-					"Found input port: " + trfName + "." + inPort + " for " + fldNm);
+			logger.log(Level.INFO, "Found input port: " + trfName + "." + inPort + " for " + fldNm);
 			inPorts.add(inPort);
 		} catch (XPathExpressionException ex) {
 			logger.log(Level.SEVERE, null, ex);
@@ -706,19 +730,18 @@ public class Mapping extends SwingWorker<Void, String> {
 																						// purpose
 		ArrayList<String> inPorts = new ArrayList<String>();
 		String inPort;
-		
+
 		try {
 			NodeList inPortList;
 			String xPathExpr = "./FIELDDEPENDENCY[@OUTPUTFIELD='" + fldNm + "']/@INPUTFIELD";
 			inPortList = (NodeList) xPath.evaluate(xPathExpr, trfNode, XPathConstants.NODESET);
-		
-			for(int i = 0; i<inPortList.getLength();i++){
+
+			for (int i = 0; i < inPortList.getLength(); i++) {
 				inPort = inPortList.item(i).getNodeValue();
-				logger.log(Level.INFO,
-						"Found input port: " + trfName + "." + inPort + " for " + fldNm);
+				logger.log(Level.INFO, "Found input port: " + trfName + "." + inPort + " for " + fldNm);
 				inPorts.add(inPort);
 			}
-		
+
 		} catch (XPathExpressionException ex) {
 			logger.log(Level.SEVERE, null, ex);
 		}
@@ -735,7 +758,7 @@ public class Mapping extends SwingWorker<Void, String> {
 			if (fldType.equals("OUTPUT")) {
 				String expStr = trfFldNode.getAttributes().getNamedItem("EXPRESSION").getNodeValue();
 				logic = field + " = " + expStr + "\r\n";
-				logger.log(Level.INFO,"Output Port Expression: "+logic);
+				logger.log(Level.INFO, "Output Port Expression: " + logic);
 				String varExp = getLogicFromEXPVar(trfNode, field, expStr, new ArrayList<String>());
 				if (!varExp.isEmpty()) {
 					logic = varExp + "\r\n" + logic;
@@ -760,18 +783,19 @@ public class Mapping extends SwingWorker<Void, String> {
 				Matcher matcher = pattern.matcher(fldExp);
 
 				if (matcher.find()) {
-					//Avoid cyclic dependency
-					if (seenVarPorts.contains(varPortName)) continue;
-					
+					// Avoid cyclic dependency
+					if (seenVarPorts.contains(varPortName))
+						continue;
+
 					seenVarPorts.add(varPortName);
 					String varExp = varPort.getAttributes().getNamedItem("EXPRESSION").getNodeValue();
-					logger.log(Level.INFO, "Variable Port "+varPortName+" Expression: "+varExp);
+					logger.log(Level.INFO, "Variable Port " + varPortName + " Expression: " + varExp);
 					if (!logic.isEmpty())
 						logic = varPortName + " = " + varExp + "\r\n" + logic;
 					else
 						logic = varPortName + " = " + varExp;
 
-					String x = getLogicFromEXPVar(trfNode, varPortName, varExp,seenVarPorts);
+					String x = getLogicFromEXPVar(trfNode, varPortName, varExp, seenVarPorts);
 					if (!x.isEmpty()) {
 						logic = x + "\r\n" + logic;
 					}
@@ -784,139 +808,150 @@ public class Mapping extends SwingWorker<Void, String> {
 		return logic;
 	}
 
-	private void getUnconnectedLookup (String lkpInstName){
-		logger.log(Level.INFO, "In Method getUnconnectedLookp with Lookup instance name "+lkpInstName);
+	private void getUnconnectedLookup(String lkpInstName) {
+		logger.log(Level.INFO, "In Method getUnconnectedLookp with Lookup instance name " + lkpInstName);
 		Instance lkpInst = getInstance(lkpInstName);
-		logger.log(Level.INFO, "Lookup instance name: "+lkpInst.name);
-		if (lkpInst == null) return;
+		logger.log(Level.INFO, "Lookup instance name: " + lkpInst.name);
+		if (lkpInst == null)
+			return;
 		Node lkpTrfNode = getTrfNode(lkpInst);
-		if (lkpTrfNode == null ) return;
-		
+		if (lkpTrfNode == null)
+			return;
+
 		Lookup lookup = new Lookup();
-		
+
 		try {
 			lookup.lkpName = xPath.evaluate("string(./@NAME)", lkpTrfNode);
-			lookup.lkpQuery = xPath.evaluate("string(./TABLEATTRIBUTE[@NAME='Lookup Sql Override']/@VALUE)", lkpTrfNode);
-			lookup.lkpCondition = xPath.evaluate("string(./TABLEATTRIBUTE[@NAME='Lookup condition']/@VALUE)", lkpTrfNode);
-			lookup.lkpTblName = xPath.evaluate("string(./TABLEATTRIBUTE[@NAME='Lookup table name']/@VALUE)", lkpTrfNode);
-			lookup.lkpSrcFilter = xPath.evaluate("string(./TABLEATTRIBUTE[@NAME='Lookup Source Filter']/@VALUE)", lkpTrfNode);
+			lookup.lkpQuery = xPath.evaluate("string(./TABLEATTRIBUTE[@NAME='Lookup Sql Override']/@VALUE)",
+					lkpTrfNode);
+			lookup.lkpCondition = xPath.evaluate("string(./TABLEATTRIBUTE[@NAME='Lookup condition']/@VALUE)",
+					lkpTrfNode);
+			lookup.lkpTblName = xPath.evaluate("string(./TABLEATTRIBUTE[@NAME='Lookup table name']/@VALUE)",
+					lkpTrfNode);
+			lookup.lkpSrcFilter = xPath.evaluate("string(./TABLEATTRIBUTE[@NAME='Lookup Source Filter']/@VALUE)",
+					lkpTrfNode);
 			lookup.connected = false;
-			
-			if (!lookups.containsKey(lookup.lkpName)){
+
+			if (!lookups.containsKey(lookup.lkpName)) {
 				lookups.put(lookup.lkpName, lookup);
 			}
 		} catch (XPathExpressionException e) {
 			e.printStackTrace();
 		}
-		
+
 	}
-	
-	private String getLogicFromConnectedLookup(Node trfNode, String fldName){
-		
-		if(!trfNode.getAttributes().getNamedItem("TYPE").getNodeValue().equals("Lookup Procedure")) return "";
-		
+
+	private String getLogicFromConnectedLookup(Node trfNode, String fldName) {
+
+		if (!trfNode.getAttributes().getNamedItem("TYPE").getNodeValue().equals("Lookup Procedure"))
+			return "";
+
 		try {
-			String portType = xPath.evaluate("string(./TRANSFORMFIELD[@NAME='"+fldName+"']/@PORTTYPE)", trfNode);
-			if (portType.equals("INPUT/OUTPUT")) return "";
-			
+			String portType = xPath.evaluate("string(./TRANSFORMFIELD[@NAME='" + fldName + "']/@PORTTYPE)", trfNode);
+			if (portType.equals("INPUT/OUTPUT"))
+				return "";
+
 			String lkpName = xPath.evaluate("string(./@NAME)", trfNode);
-			String sqlOverride = xPath.evaluate("string(./TABLEATTRIBUTE[@NAME='Lookup Sql Override']/@VALUE)", trfNode);
-			
-			if (!(sqlOverride.isEmpty() || sqlOverride == null)){
+			String sqlOverride = xPath.evaluate("string(./TABLEATTRIBUTE[@NAME='Lookup Sql Override']/@VALUE)",
+					trfNode);
+
+			if (!(sqlOverride.isEmpty() || sqlOverride == null)) {
 				Lookup lkp = new Lookup();
-				lkp.lkpName=lkpName;
-				lkp.lkpQuery=sqlOverride;
-				lkp.connected=true;
-				if(!lookups.containsKey(lkpName)){
+				lkp.lkpName = lkpName;
+				lkp.lkpQuery = sqlOverride;
+				lkp.connected = true;
+				if (!lookups.containsKey(lkpName)) {
 					lookups.put(lkpName, lkp);
 				}
 			}
-			
+
 			String lkpTable = xPath.evaluate("./TABLEATTRIBUTE[@NAME='Lookup table name']/@VALUE", trfNode);
 			String srcType = xPath.evaluate("./TABLEATTRIBUTE[@NAME='Source Type']/@VALUE", trfNode);
-			if (srcType.equals("Flat File")){
+			if (srcType.equals("Flat File")) {
 				lkpTable = "a flat file " + lkpTable;
 			}
-			
+
 			String lkpCondition = xPath.evaluate("./TABLEATTRIBUTE[@NAME='Lookup condition']/@VALUE", trfNode);
-			return "Lookup" +
-		            ((!sqlOverride.isEmpty())? " (" + lkpName + ")": "") +
-		            " on " +
-		            lkpTable +
-		            ((!sqlOverride.isEmpty())? " (query provided below)": "") +
-		            " with " + lkpCondition + " and return " + fldName;
-		
+			return "Lookup" + ((!sqlOverride.isEmpty()) ? " (" + lkpName + ")" : "") + " on " + lkpTable
+					+ ((!sqlOverride.isEmpty()) ? " (query provided below)" : "") + " with " + lkpCondition
+					+ " and return " + fldName;
+
 		} catch (XPathExpressionException e) {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
 		}
 		return "";
 	}
-	
-	private String getLogicFromAGG(Node trfNode, String fldName){
+
+	private String getLogicFromAGG(Node trfNode, String fldName) {
 		NodeList groupByPorts;
 		String groupByPortsCSV = "";
 		String expStr;
 		try {
 			String portType = xPath.evaluate("string(./TRANSFORMFIELD[@NAME='" + fldName + "']/@PORTTYPE)", trfNode);
-			if (portType.equals("OUTPUT")){
-				//Get group by ports
-				groupByPorts = (NodeList) xPath.evaluate("./TRANSFORMFIELD[@EXPRESSIONTYPE='GROUPBY']/@NAME", trfNode, XPathConstants.NODESET);
-				for(int i = 0;i<groupByPorts.getLength();i++){
+			if (portType.equals("OUTPUT")) {
+				// Get group by ports
+				groupByPorts = (NodeList) xPath.evaluate("./TRANSFORMFIELD[@EXPRESSIONTYPE='GROUPBY']/@NAME", trfNode,
+						XPathConstants.NODESET);
+				for (int i = 0; i < groupByPorts.getLength(); i++) {
 					groupByPortsCSV = groupByPortsCSV + groupByPorts.item(i).getNodeValue() + ",";
 				}
-				
-				//Get the expression for the output port
+
+				// Get the expression for the output port
 				expStr = xPath.evaluate("string(./TRANSFORMFIELD[@NAME='" + fldName + "']/@EXPRESSION)", trfNode);
-				
-				//The expression might contain some variables, if so get the formula from those var ports also
+
+				// The expression might contain some variables, if so get the
+				// formula from those var ports also
 				String logicFromVarPorts = getLogicFromAGGVar(trfNode, fldName, expStr);
-				
-				//Return the final logic
-				return  (groupByPortsCSV.isEmpty()?"":"Group by on " + groupByPortsCSV + "\r\n") +
-		                ((!logicFromVarPorts.isEmpty())? logicFromVarPorts + "\r\n":"") +
-		                fldName + " = " + expStr + "\r\n" + " ";
+
+				// Return the final logic
+				return (groupByPortsCSV.isEmpty() ? "" : "Group by on " + groupByPortsCSV + "\r\n")
+						+ ((!logicFromVarPorts.isEmpty()) ? logicFromVarPorts + "\r\n" : "") + fldName + " = " + expStr
+						+ "\r\n" + " ";
 			}
 		} catch (XPathExpressionException e) {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
 		}
-		
+
 		return "";
 	}
-	
+
 	private String getLogicFromAGGVar(Node trfNode, String fldName, String fldExp) {
 		// TODO Auto-generated method stub
 		String expStr;
 		String varPortName;
-		String aggVarLogic="";
-		
+		String aggVarLogic = "";
+
 		try {
-			NodeList varPorts = (NodeList) xPath.evaluate("./TRANSFORMFIELD[@PORTTYPE='LOCAL VARIABLE']",trfNode, XPathConstants.NODESET);
-			for (int i = 0; i < varPorts.getLength(); i++){
+			NodeList varPorts = (NodeList) xPath.evaluate("./TRANSFORMFIELD[@PORTTYPE='LOCAL VARIABLE']", trfNode,
+					XPathConstants.NODESET);
+			for (int i = 0; i < varPorts.getLength(); i++) {
 				varPortName = varPorts.item(i).getAttributes().getNamedItem("NAME").getNodeValue();
-				Pattern pattern = Pattern.compile("\b"+varPortName+"\b");
+				Pattern pattern = Pattern.compile("\b" + varPortName + "\b");
 				Matcher matcher = pattern.matcher(fldExp);
-				if (matcher.matches()){
+				if (matcher.matches()) {
 					expStr = varPorts.item(i).getAttributes().getNamedItem("EXPRESSION").getNodeValue();
-					
+
 					aggVarLogic = fldName + " = " + expStr;
-					
-					//The expression for this variable in turn may contain other variable ports.
-					//Call the function recursively
-					
+
+					// The expression for this variable in turn may contain
+					// other variable ports.
+					// Call the function recursively
+
 					String x = getLogicFromAGGVar(trfNode, varPortName, expStr);
-					if (!x.isEmpty() && x != null){
-						aggVarLogic = x + "\r\n" +aggVarLogic;
+					if (!x.isEmpty() && x != null) {
+						aggVarLogic = x + "\r\n" + aggVarLogic;
 					}
 				}
-				
+
 			}
 		} catch (XPathExpressionException e) {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
-		};
-		
+		}
+		;
+
 		return aggVarLogic;
 	}
 
@@ -992,13 +1027,13 @@ public class Mapping extends SwingWorker<Void, String> {
 			break;
 		case "Expression":
 			trfLogic = getLogicFromEXP(trfNode, fldName);
-			Pattern pattern= Pattern.compile(":LKP\\.[_A-Za-z0-9]*\\(");
-			Matcher matcher= pattern.matcher(trfLogic);
-			while(matcher.find()){
+			Pattern pattern = Pattern.compile(":LKP\\.[_A-Za-z0-9]*\\(");
+			Matcher matcher = pattern.matcher(trfLogic);
+			while (matcher.find()) {
 				String lkpStr = matcher.group();
-				String lkpName = lkpStr.substring(5,lkpStr.length()-1);
-				logger.log(Level.INFO, "Unconnected Lookup found: "+lkpName);
-				if (!lookups.containsKey(lkpName)){
+				String lkpName = lkpStr.substring(5, lkpStr.length() - 1);
+				logger.log(Level.INFO, "Unconnected Lookup found: " + lkpName);
+				if (!lookups.containsKey(lkpName)) {
 					getUnconnectedLookup(lkpName);
 				}
 			}
@@ -1045,7 +1080,8 @@ public class Mapping extends SwingWorker<Void, String> {
 	private Instance getInstance(String instanceName) {
 		Instance instance = new Instance();
 		try {
-			String xPathExprInstance = "//INSTANCE[translate(@NAME,'abcdefghijklmnopqrstuvwxyz','ABCDEFGHIJKLMNOPQRSTUVWXYZ')='" + instanceName.toUpperCase() + "']";
+			String xPathExprInstance = "//INSTANCE[translate(@NAME,'abcdefghijklmnopqrstuvwxyz','ABCDEFGHIJKLMNOPQRSTUVWXYZ')='"
+					+ instanceName.toUpperCase() + "']";
 			Node instanceNode = (Node) xPath.evaluate(xPathExprInstance, mappingNode, XPathConstants.NODE);
 
 			instance.name = instanceNode.getAttributes().getNamedItem("NAME").getNodeValue();
@@ -1072,7 +1108,7 @@ public class Mapping extends SwingWorker<Void, String> {
 			String shortcutTrfName = (String) xPath.evaluate(
 					"//SHORTCUT[@NAME='" + instance.trfName + "']/@REFOBJECTNAME", MainWindow.xmlDocument,
 					XPathConstants.STRING);
-			
+
 			if (!shortcutTrfName.isEmpty()) {
 				instance.trfName = shortcutTrfName;
 				logger.log(Level.INFO, "Shortcut Transformation Name" + shortcutTrfName);
@@ -1125,8 +1161,7 @@ public class Mapping extends SwingWorker<Void, String> {
 	private void getSourceFields(InstanceField instanceField) {
 		TableField srcFld = new TableField();
 
-		logger.log(Level.INFO,
-				"Source Definition :" + instanceField.instanceName + " Field: " + instanceField.field);
+		logger.log(Level.INFO, "Source Definition :" + instanceField.instanceName + " Field: " + instanceField.field);
 
 		try {
 			/* Get transformation name(table name) from Instance node */
@@ -1140,8 +1175,7 @@ public class Mapping extends SwingWorker<Void, String> {
 
 			if (!shortcutSrcTbl.isEmpty()) {
 				trfName = shortcutSrcTbl;
-				logger.log(Level.INFO,
-						"Found Shortcut object reference: " + trfName);
+				logger.log(Level.INFO, "Found Shortcut object reference: " + trfName);
 			}
 
 			String xPathExprSrcNode = "/POWERMART/REPOSITORY/FOLDER/SOURCE[@NAME='" + trfName + "']/SOURCEFIELD[@NAME='"
@@ -1155,53 +1189,43 @@ public class Mapping extends SwingWorker<Void, String> {
 			String srcFldScale = (String) xPath.evaluate("./@SCALE", srcFldNode, XPathConstants.STRING);
 			srcFld.fldType = srcFldDataType + "(" + srcFldPrec + (srcFldScale.equals("0") ? "" : "," + srcFldScale)
 					+ ")";
-			if (!srcTblFld.containsKey(srcFld.tblName+srcFld.fldName))
-				srcTblFld.put(srcFld.tblName+srcFld.fldName, srcFld);
-			
-			if (!sourceTables.contains(srcFld.tblName)){
+			if (!srcTblFld.containsKey(srcFld.tblName + srcFld.fldName))
+				srcTblFld.put(srcFld.tblName + srcFld.fldName, srcFld);
+
+			if (!sourceTables.contains(srcFld.tblName)) {
 				sourceTables.add(srcFld.tblName);
 			}
-			
+
 		} catch (XPathExpressionException ex) {
-			
+
 			logger.log(Level.SEVERE, null, ex);
 		}
 
 	}
-	
-	public ArrayList<String> getSourceTableNames(){
+
+	public ArrayList<String> getSourceTableNames() {
 		return sourceTables;
 	}
 
 	@Override
 	protected Void doInBackground() throws Exception {
-		setProgress(5);
+
+		if (targetInstances == null)
+			loadMappingDetails();
 		ArrayList<S2TForTargetInstance> s2t = createS2T();
-		if(!isCancelled()){
+		if (!isCancelled()) {
 			SQ srcQueries = getSQQuery();
 			logger.log(Level.INFO, "Writing data to Excel");
-			mainWindow.outputToExcel(srcQueries,s2t);
 			setProgress(99);
-		} 
-		return null;
-	}
-	
-	@Override
-	protected void done() {
-		super.done();
-		if (isCancelled()){
-			mainWindow.setStatusMessage("Cancelled S2T generation");
-		} else{
-			mainWindow.setStatusMessage("Done");
 		}
-		mainWindow.enableUserInteraction();
+		return null;
 	}
 
 	public class CustomComparator implements Comparator<TargetInstance> {
-	    @Override
-	    public int compare(TargetInstance o1, TargetInstance o2) {
-	        return o1.order - o2.order;
-	    }
+		@Override
+		public int compare(TargetInstance o1, TargetInstance o2) {
+			return o1.order - o2.order;
+		}
 	}
-	
+
 }

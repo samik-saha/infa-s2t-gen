@@ -13,22 +13,25 @@ import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.util.ArrayList;
-import java.util.Comparator;
 import java.util.HashMap;
 import java.util.ListIterator;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
+import javax.swing.Box;
 import javax.swing.BoxLayout;
 import javax.swing.DefaultListModel;
 import javax.swing.JFileChooser;
 import javax.swing.JLabel;
+import javax.swing.JList;
+import javax.swing.JMenuItem;
 import javax.swing.JOptionPane;
-import javax.swing.ProgressMonitor;
 import javax.swing.UIManager;
 import javax.swing.UnsupportedLookAndFeelException;
 import javax.swing.event.DocumentEvent;
 import javax.swing.event.DocumentListener;
+import javax.swing.event.ListSelectionEvent;
+import javax.swing.event.ListSelectionListener;
 import javax.swing.filechooser.FileNameExtensionFilter;
 import javax.xml.parsers.DocumentBuilder;
 import javax.xml.parsers.DocumentBuilderFactory;
@@ -41,9 +44,10 @@ import org.w3c.dom.Node;
 import org.w3c.dom.NodeList;
 import org.xml.sax.SAXException;
 
-import com.samiksaha.infa.automateds2t.Mapping.S2TForTargetInstance;
-import com.samiksaha.infa.automateds2t.Mapping.S2TRow;
 import com.samiksaha.infa.automateds2t.Mapping.TargetInstance;
+import javax.swing.AbstractAction;
+import java.awt.event.ActionEvent;
+import javax.swing.Action;
 
 /**
  * 
@@ -57,7 +61,7 @@ public class MainWindow extends javax.swing.JFrame {
 	private static final long serialVersionUID = 1L;
 	NodeList mappingNodeList;
 	HashMap<String, Node> mappingNodeNamedList;
-	HashMap<String, Mapping> mappingObjectList;
+	static HashMap<String, Mapping> mappingObjectList;
 	DefaultListModel<String> mappingListModel;
 	DefaultListModel<String> targetInstanceListModel;
 	ArrayList<String> mappingList;
@@ -67,17 +71,18 @@ public class MainWindow extends javax.swing.JFrame {
 	private ProgressWindow progressWindow;
 	Mapping mapping;
 	Logger logger;
+	S2TGenerator s2tGenerator;
 
 	/**
 	 * Creates new form MainWindow
 	 */
 	public MainWindow() {
 		logger = Logger.getLogger(MainWindow.class.getName());
-		this.mappingList = new ArrayList();
-		this.mappingListModel = new DefaultListModel();
-		this.mappingObjectList = new HashMap();
-		this.mappingNodeNamedList = new HashMap();
-		this.targetInstanceListModel = new DefaultListModel();
+		this.mappingList = new ArrayList<String>();
+		this.mappingListModel = new DefaultListModel<String>();
+		MainWindow.mappingObjectList = new HashMap<String, Mapping>();
+		this.mappingNodeNamedList = new HashMap<String, Node>();
+		this.targetInstanceListModel = new DefaultListModel<String>();
 		try {
 			UIManager.setLookAndFeel(UIManager.getSystemLookAndFeelClassName());
 		} catch (UnsupportedLookAndFeelException | ClassNotFoundException | InstantiationException
@@ -104,17 +109,25 @@ public class MainWindow extends javax.swing.JFrame {
 		jPanel1 = new javax.swing.JPanel();
 		searchBox = new javax.swing.JTextField();
 		jScrollPane2 = new javax.swing.JScrollPane();
-		mappingJList = new javax.swing.JList();
+		mappingJList = new JList<String>();
 		jSplitPane2 = new javax.swing.JSplitPane();
 		jTabbedPane1 = new javax.swing.JTabbedPane();
 		jScrollPane1 = new javax.swing.JScrollPane();
-		targetInstanceJList = new javax.swing.JList();
+		targetInstanceJList = new JList<String>();
+		targetInstanceJList.addListSelectionListener(new ListSelectionListener() {
+			public void valueChanged(ListSelectionEvent arg0) {
+				
+			}
+		});
+		targetInstanceJList.setToolTipText("Select target instances to be included in the S2T");
 		mappingInfoPanel = new javax.swing.JPanel();
 		jLabel2 = new javax.swing.JLabel();
 		jToolBar1 = new javax.swing.JToolBar();
 		jToolBar1.setFloatable(false);
 		btnFileOpen = new javax.swing.JButton();
+		btnFileOpen.setToolTipText("Open Informatica export");
 		btnGenerateS2T = new javax.swing.JButton();
+		btnGenerateS2T.setToolTipText("Generate S2T");
 		jToolBar2 = new javax.swing.JToolBar();
 		jToolBar2.setPreferredSize(new Dimension(13, 20));
 		statusMessage = new javax.swing.JLabel();
@@ -122,7 +135,6 @@ public class MainWindow extends javax.swing.JFrame {
 		jMenu1 = new javax.swing.JMenu();
 		menuItemFileOpen = new javax.swing.JMenuItem();
 		jMenu2 = new javax.swing.JMenu();
-		jMenu3 = new javax.swing.JMenu();
 		jMenu4 = new javax.swing.JMenu();
 		jMenu5 = new javax.swing.JMenu();
 
@@ -161,6 +173,7 @@ public class MainWindow extends javax.swing.JFrame {
 		jSplitPane2.setBorder(null);
 		jSplitPane2.setOrientation(javax.swing.JSplitPane.VERTICAL_SPLIT);
 
+		//targetInstanceJList.setCellRenderer(new CheckboxListCellRenderer());
 		targetInstanceJList.setModel(targetInstanceListModel);
 		jScrollPane1.setViewportView(targetInstanceJList);
 
@@ -212,6 +225,9 @@ public class MainWindow extends javax.swing.JFrame {
 		jToolBar2.setBorder(null);
 		jToolBar2.setFloatable(false);
 
+		rigidArea = Box.createRigidArea(new Dimension(7, 20));
+		jToolBar2.add(rigidArea);
+
 		statusMessage.setText("Done");
 		jToolBar2.add(statusMessage);
 
@@ -233,17 +249,30 @@ public class MainWindow extends javax.swing.JFrame {
 
 		jMenuBar1.add(jMenu1);
 
+		mntmExit = new JMenuItem("Exit");
+		mntmExit.setAction(action);
+		jMenu1.add(mntmExit);
+
 		jMenu2.setText("Edit");
 		jMenuBar1.add(jMenu2);
 
-		jMenu3.setText("View");
-		jMenuBar1.add(jMenu3);
+		mntmCopy = new JMenuItem("Copy");
+		jMenu2.add(mntmCopy);
 
 		jMenu4.setText("Tools");
 		jMenuBar1.add(jMenu4);
 
+		mntmGenerateSt = new JMenuItem("Generate S2T");
+		jMenu4.add(mntmGenerateSt);
+
+		mntmOptions = new JMenuItem("Options");
+		jMenu4.add(mntmOptions);
+
 		jMenu5.setText("Help");
 		jMenuBar1.add(jMenu5);
+
+		mntmAbout = new JMenuItem("About");
+		jMenu5.add(mntmAbout);
 
 		setJMenuBar(jMenuBar1);
 
@@ -255,40 +284,68 @@ public class MainWindow extends javax.swing.JFrame {
 	}// GEN-LAST:event_menuItemFileOpenActionPerformed
 
 	private void mappingJListValueChanged(javax.swing.event.ListSelectionEvent evt) {// GEN-FIRST:event_mappingJListValueChanged
-		if (!mappingJList.isSelectionEmpty()) {
-			String mappingName = mappingJList.getSelectedValue().toString();
-			Mapping mapping;
-			if (mappingObjectList.containsKey(mappingName))
-				mapping = (Mapping) mappingObjectList.get(mappingName);
-			else {
-				mapping = new Mapping(this, mappingNodeNamedList.get(mappingName));
-				mappingObjectList.put(mapping.getName(), mapping);
+		if (!evt.getValueIsAdjusting())
+			if (!mappingJList.isSelectionEmpty() && mappingJList.getSelectedIndices().length == 1) {
+				String mappingName = mappingJList.getSelectedValue().toString();
+				//Mapping mapping;
+				if (mappingObjectList.containsKey(mappingName)) {
+					mapping = (Mapping) mappingObjectList.get(mappingName);
+					showMappingDetails(mapping);
+				} else {
+					mapping = new Mapping(this, mappingNodeNamedList.get(mappingName));
+					statusMessage.setText("Loading mapping details...");
+					mappingInfoPanel.removeAll();
+					targetInstanceListModel.clear();
+					mappingInfoPanel.updateUI();
+					mappingObjectList.put(mappingName, mapping);
+					new Thread(new Runnable() {
+						public void run() {
+							mapping.loadMappingDetails();
+							showMappingDetails(mapping);
+							statusMessage.setText("Done");
+						}
+					}).start();
+				}
 			}
-			String description = mapping.getDescription();
-			int trfCount = mapping.getTransformationCount();
-			String targetTables = mapping.getTargetTableNames().toString();
-
-			JLabel descriptionLabel = new JLabel(
-					description.trim().isEmpty() ? "" : "<html><p><b>Description</b>: " + description + "</p></html>");
-			JLabel targetTablesLabel = new JLabel("<html><b>Targets</b>: " + targetTables + "</html>");
-			JLabel trfCountLabel = new JLabel("<html><b>Number of Transformations</b>: " + trfCount + "<html>");
-
-			mappingInfoPanel.removeAll();
-			mappingInfoPanel.add(descriptionLabel);
-			mappingInfoPanel.add(targetTablesLabel);
-			mappingInfoPanel.add(trfCountLabel);
-			mappingInfoPanel.updateUI();
-
-			ArrayList<TargetInstance> targetInstances = mapping.getTargetInstanceList();
-
-			targetInstanceListModel.clear();
-			ListIterator<TargetInstance> targetInstanceIterator = targetInstances.listIterator();
-			while (targetInstanceIterator.hasNext()) {
-				targetInstanceListModel.addElement(targetInstanceIterator.next().name);
+			else{//None or multiple items selected
+				mappingInfoPanel.removeAll();
+				targetInstanceListModel.clear();
+				repaint();
 			}
-		}
 
 	}// GEN-LAST:event_mappingJListValueChanged
+
+	/**
+	 * Show mapping description, target instance list for the mapping.
+	 * Call loadMappingDetails on the mapping before calling this method.
+	 * 
+	 * @param mapping
+	 */
+	private void showMappingDetails(Mapping mapping) {
+		String description = mapping.getDescription();
+		int trfCount = mapping.getTransformationCount();
+		String targetTables = mapping.getTargetTableNames().toString();
+
+		JLabel descriptionLabel = new JLabel(
+				description.trim().isEmpty() ? "" : "<html><p><b>Description</b>: " + description + "</p></html>");
+		JLabel targetTablesLabel = new JLabel("<html><b>Targets</b>: " + targetTables + "</html>");
+		JLabel trfCountLabel = new JLabel("<html><b>Number of Transformations</b>: " + trfCount + "<html>");
+
+		mappingInfoPanel.removeAll();
+		mappingInfoPanel.add(descriptionLabel);
+		mappingInfoPanel.add(targetTablesLabel);
+		mappingInfoPanel.add(trfCountLabel);
+		mappingInfoPanel.updateUI();
+
+		ArrayList<TargetInstance> targetInstances = mapping.getTargetInstanceList();
+
+		targetInstanceListModel.clear();
+		ListIterator<TargetInstance> targetInstanceIterator = targetInstances.listIterator();
+		while (targetInstanceIterator.hasNext()) {
+			targetInstanceListModel.addElement(targetInstanceIterator.next().name);
+		}
+
+	}
 
 	private void btnFileOpenActionPerformed(java.awt.event.ActionEvent evt) {// GEN-FIRST:event_btnFileOpenActionPerformed
 		final JFileChooser fc = new JFileChooser();
@@ -322,10 +379,16 @@ public class MainWindow extends javax.swing.JFrame {
 					mappingNodeNamedList.put(mappingName, mappingNodeList.item(i));
 				}
 
+				//Clear and reload mapping list on the UI
 				mappingList.clear();
 				mappingList.addAll(mappingNodeNamedList.keySet());
 
 				updateMappingList();
+
+				// Clear Target Instance
+				targetInstanceListModel.clear();
+				// Clear mapping info panel
+				mappingInfoPanel.removeAll();
 				jSplitPane1.setVisible(true);
 
 			} catch (IOException | SAXException | ParserConfigurationException e) {
@@ -335,15 +398,18 @@ public class MainWindow extends javax.swing.JFrame {
 	}// GEN-LAST:event_btnFileOpenActionPerformed
 
 	private void btnGenerateS2TActionPerformed(java.awt.event.ActionEvent evt) {// GEN-FIRST:event_btnGenerateS2TActionPerformed
-		if (!mappingJList.isSelectionEmpty()) {
-			String mappingName = mappingJList.getSelectedValue().toString();
-			mapping = (Mapping) mappingObjectList.get(mappingName);
+		if (!mappingJList.isSelectionEmpty()) {//Check if selection is non empty
+			ArrayList<String> selectedMappings =  (ArrayList<String>) mappingJList.getSelectedValuesList();
 
 			if (!targetInstanceJList.isSelectionEmpty())
 				mapping.setTargetInstancesForS2T((ArrayList<String>) targetInstanceJList.getSelectedValuesList());
 
 			final JFileChooser fc = new JFileChooser();
-			fc.setSelectedFile(new File(mappingName + ".xlsx"));
+			if (selectedMappings.size() == 1){
+				String mappingName = selectedMappings.get(0);
+				fc.setSelectedFile(new File(mappingName + ".xlsx"));
+			}
+			
 			FileNameExtensionFilter filter = new FileNameExtensionFilter("Excel files", "xlsx");
 			fc.setFileFilter(filter);
 			fc.setAcceptAllFileFilterUsed(false);
@@ -352,16 +418,16 @@ public class MainWindow extends javax.swing.JFrame {
 			if (returnVal == JFileChooser.APPROVE_OPTION) {
 				try {
 					File file = fc.getSelectedFile();
-					
+
 					FileOutputStream fos = new FileOutputStream(file);
 					fos.close();
 					xlOutput = new ExcelOutput(file);
-					xlOutput.createWorksheet(mappingName);
+
+					s2tGenerator = new S2TGenerator(this, selectedMappings, xlOutput);
 
 					progressWindow = new ProgressWindow();
 
-					mapping.addPropertyChangeListener(new PropertyChangeListener() {
-
+					s2tGenerator.addPropertyChangeListener(new PropertyChangeListener() {
 						@Override
 						public void propertyChange(PropertyChangeEvent evt) {
 							if ("progress" == evt.getPropertyName()) {
@@ -369,10 +435,10 @@ public class MainWindow extends javax.swing.JFrame {
 								progressWindow.setProgress(progress);
 								String message = String.format("Completed %d%%.\n", progress);
 								progressWindow.setNote(message);
-								if (progressWindow.isCanceled() || mapping.isDone()) {
+								if (progressWindow.isCanceled() || s2tGenerator.isDone()) {
 									if (progressWindow.isCanceled()) {
 										logger.log(Level.INFO, "User cancelled S2T generation.");
-										mapping.cancel(true);
+										s2tGenerator.cancel(true);
 									} else {
 										logger.log(Level.INFO, "S2T generation complete!");
 										progressWindow.dispose();
@@ -383,7 +449,7 @@ public class MainWindow extends javax.swing.JFrame {
 						}
 					});
 					disableUserInteraction();
-					mapping.execute();
+					s2tGenerator.execute();
 					progressWindow.setLocationRelativeTo(this);
 					progressWindow.setVisible(true);
 				} catch (FileNotFoundException e) {
@@ -432,63 +498,6 @@ public class MainWindow extends javax.swing.JFrame {
 			}
 		}
 
-	}
-
-	public void outputToExcel(Mapping.SQ srcQueries, ArrayList<S2TForTargetInstance> s2t) {
-		logger.log(Level.INFO, "In method outputToExcel");
-		xlOutput.addBlankRow();
-		boolean sqSQLQuery = false;
-		xlOutput.addHeader("Source");
-		for (int i = 0; i < srcQueries.sqQuery.size(); i++) {
-			if (!srcQueries.sqQuery.get(i).isEmpty()) {
-				sqSQLQuery = true;
-				xlOutput.addQuery(srcQueries.sqQuery.get(i));
-				xlOutput.addBlankRow();
-			}
-		}
-
-		for (int i = 0; i < srcQueries.sqFilter.size(); i++) {
-			if (!(srcQueries.sqFilter.get(i).trim().isEmpty() || srcQueries.sqFilter.get(i) == null)) {
-				sqSQLQuery = true;
-				xlOutput.writeCell("Source Filter:", 3);
-				xlOutput.addQuery(srcQueries.sqFilter.get(i));
-			}
-		}
-
-		if (sqSQLQuery == false) {
-			ArrayList<String> sourceTables = mapping.getSourceTableNames();
-			for (int i = 0; i < sourceTables.size(); i++) {
-				xlOutput.writeCell(sourceTables.get(i), 3);
-			}
-		}
-
-		xlOutput.addBlankRow();
-
-		ListIterator<S2TForTargetInstance> iter = s2t.listIterator();
-		while (iter.hasNext()) {
-			S2TForTargetInstance s2tForTargetInstance = iter.next();
-			logger.log(Level.INFO, "Writing mapping for target instance " + s2tForTargetInstance.targetInstanceName);
-			xlOutput.addSectionHeader("Field level mapping for: " + s2tForTargetInstance.targetInstanceName);
-			xlOutput.addFieldMappingsHeader();
-			ArrayList<S2TRow> s2tRows = s2tForTargetInstance.s2tRows;
-			logger.log(Level.INFO, "No. of rows: " + s2tForTargetInstance.s2tRows.size());
-			ListIterator<S2TRow> iter1 = s2tRows.listIterator();
-			while (iter1.hasNext()) {
-				S2TRow s2tRow = (S2TRow) iter1.next();
-				xlOutput.addFieldMappingRow(s2tRow.S2TsrcTblFld, s2tRow.tgtTbl, s2tRow.tgtFld, s2tRow.logic,
-						s2tRow.tgtFldType, s2tRow.tgtFldNullable, s2tRow.tgtFldKeyType);
-				/*
-				 * System.out.println(s2tRow.tgtTbl + s2tRow.tgtFld +
-				 * s2tRow.logic + s2tRow.tgtFldType + s2tRow.tgtFldNullable +
-				 * s2tRow.tgtFldKeyType+" source:");
-				 */
-
-			}
-
-		}
-		xlOutput.addBlankRow();
-		xlOutput.addLookupDetails(mapping.lookups);
-		xlOutput.close();
 	}
 
 	/**
@@ -560,12 +569,15 @@ public class MainWindow extends javax.swing.JFrame {
 			components[i].setEnabled(true);
 		}
 		searchBox.setEnabled(true);
-		if (progressWindow.isVisible()) progressWindow.dispose();
+		if (progressWindow.isVisible())
+			progressWindow.dispose();
 	}
 
 	public void setStatusMessage(String status) {
 		statusMessage.setText(status);
 	}
+	
+	
 	
 
 	// Variables declaration - do not modify//GEN-BEGIN:variables
@@ -574,7 +586,6 @@ public class MainWindow extends javax.swing.JFrame {
 	private javax.swing.JLabel jLabel2;
 	private javax.swing.JMenu jMenu1;
 	private javax.swing.JMenu jMenu2;
-	private javax.swing.JMenu jMenu3;
 	private javax.swing.JMenu jMenu4;
 	private javax.swing.JMenu jMenu5;
 	private javax.swing.JMenuBar jMenuBar1;
@@ -592,5 +603,20 @@ public class MainWindow extends javax.swing.JFrame {
 	private javax.swing.JTextField searchBox;
 	private javax.swing.JLabel statusMessage;
 	private javax.swing.JList<String> targetInstanceJList;
-	// End of variables declaration//GEN-END:variables
+	private JMenuItem mntmOptions;
+	private JMenuItem mntmExit;
+	private JMenuItem mntmGenerateSt;
+	private JMenuItem mntmAbout;
+	private JMenuItem mntmCopy;
+	private Component rigidArea;
+	private final Action action = new SwingAction();
+	private class SwingAction extends AbstractAction {
+		public SwingAction() {
+			putValue(NAME, "Exit");
+			putValue(SHORT_DESCRIPTION, "Close the application");
+		}
+		public void actionPerformed(ActionEvent e) {
+			dispose();
+		}
+	}
 }
