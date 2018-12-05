@@ -659,7 +659,8 @@ public class Mapping extends SwingWorker<Void, String> {
 		String inPort;
 
 		try {
-			String xPathExpr = "./TRANSFORMFIELD[@PORTTYPE='INPUT/OUTPUT' or @PORTTYPE='INPUT']";
+			/* for joiner master group the port type is 'INPUT/OUTPUT/MASTER' */
+			String xPathExpr = "./TRANSFORMFIELD[@PORTTYPE='INPUT/OUTPUT' or @PORTTYPE='INPUT' or @PORTTYPE='INPUT/OUTPUT/MASTER' ]";
 			NodeList inpPortList = (NodeList) xPath.evaluate(xPathExpr, trfNode, XPathConstants.NODESET);
 			for (int i = 0; i < inpPortList.getLength(); i++) {
 				Node inPortNode = inpPortList.item(i);
