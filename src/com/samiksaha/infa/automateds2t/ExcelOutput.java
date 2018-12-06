@@ -21,6 +21,7 @@ import java.util.logging.Logger;
 
 import org.apache.poi.ss.usermodel.Cell;
 import org.apache.poi.ss.usermodel.CellStyle;
+import org.apache.poi.ss.usermodel.FillPatternType;
 import org.apache.poi.ss.usermodel.Font;
 import org.apache.poi.ss.usermodel.IndexedColors;
 import org.apache.poi.ss.usermodel.Row;
@@ -61,26 +62,26 @@ public class ExcelOutput {
         //Configure fonts and styles
         captionFont = wb.createFont();
         captionFont.setFontHeightInPoints((short) 14);
-        captionFont.setBoldweight(Font.BOLDWEIGHT_BOLD);
+        captionFont.setBold(true);
         
         captionStyle = wb.createCellStyle();
         captionStyle.setFont(captionFont);
         captionStyle.setFillForegroundColor(IndexedColors.ORANGE.getIndex());
-        captionStyle.setFillPattern(CellStyle.SOLID_FOREGROUND);
+        captionStyle.setFillPattern(FillPatternType.SOLID_FOREGROUND);
         
         headerFont = wb.createFont();
-        headerFont.setBoldweight(Font.BOLDWEIGHT_BOLD);
+        headerFont.setBold(true);
         headerFont.setColor(IndexedColors.WHITE.getIndex());
         
         headerStyle = wb.createCellStyle();
         headerStyle.setFont(headerFont);
         headerStyle.setFillForegroundColor(IndexedColors.BROWN.getIndex());
-        headerStyle.setFillPattern(CellStyle.SOLID_FOREGROUND);
+        headerStyle.setFillPattern(FillPatternType.SOLID_FOREGROUND);
         
         subHeaderStyle = wb.createCellStyle();
         subHeaderStyle.setFont(headerFont);
         subHeaderStyle.setFillForegroundColor(IndexedColors.DARK_TEAL.getIndex());
-        subHeaderStyle.setFillPattern(CellStyle.SOLID_FOREGROUND);
+        subHeaderStyle.setFillPattern(FillPatternType.SOLID_FOREGROUND);
         
 
         Row row = ws.createRow((short) 0);
@@ -116,7 +117,7 @@ public class ExcelOutput {
         Cell cell = row.createCell(0);
         CellStyle cs = wb.createCellStyle();
         cs.setFillForegroundColor(IndexedColors.GOLD.index);
-        cs.setFillPattern(CellStyle.SOLID_FOREGROUND);
+        cs.setFillPattern(FillPatternType.SOLID_FOREGROUND);
         cell.setCellStyle(cs);
         cell.setCellValue(header);
         ws.addMergedRegion(new CellRangeAddress(usedRow,usedRow,0, 4));
