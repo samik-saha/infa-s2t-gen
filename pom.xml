@@ -18,7 +18,7 @@
 		</resources>
 		<testResources>
 		  <testResource>
-		  <directory>test/resources</directory>
+		  <directory>test/res</directory>
 		  </testResource>
 		</testResources>
 		<pluginManagement>
