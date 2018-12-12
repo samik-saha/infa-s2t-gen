@@ -8,12 +8,12 @@ public class S2TGeneratorTest {
 
 	@Test
 	public void testDoInBackground() {
-		assertEquals("Hello", "Hello");
+		assertEquals("Hello", "Hello");//TODO
 	}
 
 	@Test
 	public void testOutputToExcel() {
-		assertEquals("World", "World");
+		assertEquals("World", "World");//TODO
 	}
 
 }
