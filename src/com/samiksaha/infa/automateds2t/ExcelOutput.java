@@ -209,22 +209,29 @@ public class ExcelOutput {
         
         logger.log(Level.INFO,"Creating merged region: start row:"+startRow+" end row:"+usedRow);
 
-        ws.addMergedRegion(new CellRangeAddress(startRow,usedRow,3,3));
+        if (startRow != usedRow) {
+        	ws.addMergedRegion(new CellRangeAddress(startRow,usedRow,3,3));
+        	ws.addMergedRegion(new CellRangeAddress(startRow,usedRow,4,4));
+        	ws.addMergedRegion(new CellRangeAddress(startRow,usedRow,5,5));
+        	ws.addMergedRegion(new CellRangeAddress(startRow,usedRow,6,6));
+        	ws.addMergedRegion(new CellRangeAddress(startRow,usedRow,7,7));
+        	ws.addMergedRegion(new CellRangeAddress(startRow,usedRow,8,8));
+        }
+        
         cell = row.createCell(4);
         cell.setCellValue(tgtTbl);
-        ws.addMergedRegion(new CellRangeAddress(startRow,usedRow,4,4));
+
         cell = row.createCell(5);
         cell.setCellValue(tgtFld);
-        ws.addMergedRegion(new CellRangeAddress(startRow,usedRow,5,5));
+
         cell = row.createCell(6);
         cell.setCellValue(tgtFldType);
-        ws.addMergedRegion(new CellRangeAddress(startRow,usedRow,6,6));
+
         cell = row.createCell(7);
         cell.setCellValue(tgtFldNullable);
-        ws.addMergedRegion(new CellRangeAddress(startRow,usedRow,7,7));
+
         cell = row.createCell(8);
         cell.setCellValue(tgtFldKeyType);
-        ws.addMergedRegion(new CellRangeAddress(startRow,usedRow,8,8));
         
         usedRow++;
         
@@ -291,6 +298,7 @@ public class ExcelOutput {
         	ws.autoSizeColumn(8);
             wb.write(fileOut);
             fileOut.close();
+            Logger.getLogger(ExcelOutput.class.getName()).log(Level.INFO,"Writing to file complete.");
         } catch (IOException ex) {
             Logger.getLogger(ExcelOutput.class.getName()).log(Level.SEVERE, null, ex);
         }
