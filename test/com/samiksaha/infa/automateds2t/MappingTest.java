@@ -18,12 +18,17 @@ import org.w3c.dom.Document;
 import org.w3c.dom.NodeList;
 import org.xml.sax.SAXException;
 
+import com.samiksaha.infa.automateds2t.Mapping.S2TForTargetInstance;
+import com.samiksaha.infa.automateds2t.Mapping.S2TRow;
+import com.samiksaha.infa.automateds2t.Mapping.TableField;
+
 public class MappingTest {
 
 	private static Document xmlDocument;
 	private static XPath xPath;
 	private static NodeList mappingNodeList;
 	private static Mapping mapping;
+	static ArrayList<S2TForTargetInstance> s2t;
 
 	@BeforeClass
 	public static void initialize() {
@@ -45,6 +50,7 @@ public class MappingTest {
 			
 			mapping = new Mapping(null, mappingNodeList.item(0));
 			mapping.loadMappingDetails();
+			s2t = mapping.createS2T();
 		} catch (IOException | SAXException | ParserConfigurationException e) {
 			e.printStackTrace();
 		}
@@ -70,4 +76,48 @@ public class MappingTest {
 		ArrayList<String> tgtTableNames = mapping.getTargetTableNames();
 		assertEquals("test_Target", tgtTableNames.get(0));
 	}
+	
+	@Test
+	public final void testSQQuery() {
+		String actualQuery=mapping.getSQQuery().sqQuery.get(0);
+		String expectedQuery = "select 1 from dual";
+		assertEquals(expectedQuery, actualQuery);
+	}
+	
+	@Test
+	public final void testTargetInstanceList() {
+		//<TARGETLOADORDER ORDER ="1" TARGETINSTANCE ="test_Target"/>
+		String expectedTargetInstanceName="test_Target";
+		int expectedTargetInstanceOrder=1;
+		String actualTargetInstanceName=mapping.getTargetInstanceList().get(0).name;
+		int actualTargetInstanceOrder=mapping.getTargetInstanceList().get(0).order;
+		assertEquals(expectedTargetInstanceOrder, actualTargetInstanceOrder);
+		assertEquals(expectedTargetInstanceName,actualTargetInstanceName);
+	}
+	
+	@Test
+	public final void testCreateS2T() {
+		
+		S2TRow expectedS2TRow= mapping.new S2TRow();
+		TableField srcTblFld = mapping.new TableField();
+		expectedS2TRow.tgtFld="ID";
+		expectedS2TRow.tgtFldKeyType="string(100)";
+		expectedS2TRow.tgtTbl="test_Target";
+		srcTblFld.fldName="DUMMY";
+		srcTblFld.tblName="DUAL";
+		srcTblFld.fldType="varchar2(1)";
+		expectedS2TRow.S2TsrcTblFld.add(srcTblFld);
+		expectedS2TRow.tgtFldNullable="NULL";
+		expectedS2TRow.logic="ID=DUMMY";
+		System.out.println(s2t.get(0).s2tRows.size());
+		
+		//TODO
+	}
+	
+    @Test
+    public final void testGetSourceTableNames() {
+    	String expectedSourceTableName="DUAL";
+    	//String actualSourceTableName=mapping.getSourceTableNames().get(0);
+    	//assertEquals(expectedSourceTableName,actualSourceTableName);
+    }
 }
