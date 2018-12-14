@@ -39,7 +39,6 @@ public class S2TGenerator extends SwingWorker<Void, String> {
 			}
 			
 			ArrayList<S2TForTargetInstance> s2t = mapping.createS2T();
-			
 			outputToExcel(mappingName, mapping.getSQQuery(),mapping.getSourceTableNames(),mapping.lookups,s2t);
 			
 		}
