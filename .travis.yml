@@ -1,6 +1,14 @@
 language: java
-
-script: "mvn cobertura:cobertura"
-
+script: mvn cobertura:cobertura
 after_success:
-  - bash <(curl -s https://codecov.io/bash)
+- bash <(curl -s https://codecov.io/bash)
+deploy:
+  provider: releases
+  api_key:
+    secure: ujMSbH4QXxCAwOw2wBHk5Hxi0zX8xFct6Yh05zoOGHycuTHkH9yKlCAkXoFn3xWQfwyalxKTW/Ku6GhXgCHDsOBFJAiBJnCWqP4pqr31zg64Ar7waJ6uNa2myirwfUPNddOLQ5Sy/KWbPvxRyn9R64pXHiaRWd2zhBvI4i9BTkms1lOM0afGeGIJ8AN4UNEj5j6VkE8tEd1w1eGppdjoMl/aQevSa76RP+dRMsHnPFmCv3tjKLYSofMy5omskD5PowA8QcaP0LmlBQeq1EVj+Fb/nGJZI+Ut8KO1L4k2K5IY3ATPSll/PV4me4G8gRyH6G4WJZFwRBXSNxF8RxRJUk00WE/Qzai+2M0Xm17n8uM8+r01byMNPLNE8sa4slro6CYlnlVw/h9XlWjONWAix3ktD1oYd5yIAB2JorgXptqqB/VcUIsKw5ZBTBzG16t7CEIlJIkwWPYYIm7yYmgfRsoKOpySIuKosCjCemR6ji0jUQc9y0ksackQMD1rglLcLWDYOy7636ZrzMUFLuGLQxcom4L4y2g8SYHSHKiex3wrY1rleBmodp8Zd+7MOLaTXY74R1sM1nE59ILHfYPIaZRJCSk0jQK5k5dkohDZzkzed2Ov7MJeKz4jf4mopcVcH9ZT1Da7rZk/Uxl4dKq59C2llUfnnyXL8AXMbBgrz5U=
+  file_glob: true
+  file: target/infa_s2t_gen*.jar
+  on:
+    repo: samik-saha/infa-s2t-gen
+  skip_cleanup: true
+  draft: true
