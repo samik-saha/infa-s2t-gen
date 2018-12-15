@@ -32,7 +32,7 @@ public class MappingTest {
 
 	@BeforeClass
 	public static void initialize() {
-		File file = new File("./test/res/m_sample_straight_move.XML");
+		File file = new File("./src/test/com/samiksaha/infa/automateds2t/res/m_sample_straight_move.XML");
 		try {
 			DocumentBuilderFactory builderFactory = DocumentBuilderFactory.newInstance();
 			builderFactory.setValidating(true);
