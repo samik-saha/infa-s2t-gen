@@ -10,3 +10,5 @@ deploy:
   file: target/*.jar
   skip_cleanup: true
   draft: true
+  on:
+    tags: true
