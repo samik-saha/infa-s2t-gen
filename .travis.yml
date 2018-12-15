@@ -4,7 +4,8 @@ after_success:
 - bash <(curl -s https://codecov.io/bash)
 deploy:
   provider: releases
-  api_key: 3d76fbf274cd484f083d8beac0b75a4a4ddd8dee
+  api_key:
+    secure: AI2FKDTCiKZTMSwoVbNz0Jmia1t6Pj4fmDG0j0iPdg5onL6Hu8AqIkhRYmKbZHOgB8vlPJEexRMrpcpolVDlz1lKdnv3qyV3we3YO7Gnq9CS1FIwvuzwCZh8RFiUySHosOPv/FVrBmaVfGsZJRDF7jxm9luRB0xIrx63wHSjNjsyY/XpuxtxgR8l43SXZV9BdtgqlgFoVwiKq0VF6eRJwCQcQsFRNFbKCmmbOJHEymF9x+hOX8yYwONiHrq/6BFBLXotOFGPI0hTkkHc3fsIVfOkpB0xYVlpDzyMUuwHZhbBJ7N5cmWENiMHw1zLx9QsNVKM9SjQ036ihErkSsPuMYaiJvIk+MRAFFZZXeplJFsjaDw9tdsN1Aki5gFzo5Dx+7aqtFJC/eWjstmyT55IcVf6krQ9Y8mCz5yiVoRwfhPNwN/02c10M0goe7rbPRFkFteq8A91H/q2fnGryhytoYQV31eJMnLhln/QymHDjWjMMTRSjRNjNJ0ttuUfnXkm7iyVs+isL/G9cUg5WVRpnKfjhO7fXHAD8TIhjNIp2PH2J4FihQvH84Ck4+LSROFez0ISGrU2irtVEQfq7QEAeuadDIyMn5kqXjwkrpSsNyf7hqi+6/ybsOmVLGH6p4vXS4VzcKufMEIbPrX7rPy4DzfoaxAyB3JPyRoTYT398MI=
   file_glob: true
   file: target/*.jar
   skip_cleanup: true
