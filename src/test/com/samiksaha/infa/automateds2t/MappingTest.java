@@ -42,15 +42,12 @@ public class MappingTest {
 			
 			mw = new MainWindow();
 			MainWindow.xmlDocument = builder.parse(file);
-			
 			XPathFactory.newInstance().newXPath();
-
 			mappingNodeList = MainWindow.xmlDocument.getElementsByTagName("MAPPING");
-			
-			
 			mapping = new Mapping(mw, mappingNodeList.item(0));
 			mapping.loadMappingDetails();
 			s2t = mapping.createS2T();
+			
 		} catch (IOException | SAXException | ParserConfigurationException e) {
 			e.printStackTrace();
 		}
@@ -97,7 +94,6 @@ public class MappingTest {
 	
 	@Test
 	public final void testCreateS2T() {
-		
 		S2TRow expectedS2TRow= mapping.new S2TRow();
 		TableField srcTblFld = mapping.new TableField();
 		expectedS2TRow.tgtFld="ID";
@@ -109,8 +105,6 @@ public class MappingTest {
 		expectedS2TRow.S2TsrcTblFld.add(srcTblFld);
 		expectedS2TRow.tgtFldNullable="NULL";
 		expectedS2TRow.logic="ID=DUMMY";
-		System.out.println(s2t.get(0).targetInstanceName);
-		System.out.println(s2t.get(0).s2tRows);
 		assertEquals(expectedS2TRow.tgtFld, s2t.get(0).s2tRows.get(0).tgtFld);
 		assertEquals(expectedS2TRow.tgtFldKeyType, s2t.get(0).s2tRows.get(0).tgtFldKeyType);
 		assertEquals(expectedS2TRow.S2TsrcTblFld.get(0).fldName, s2t.get(0).s2tRows.get(0).S2TsrcTblFld.get(0).fldName);
