@@ -1,4 +1,8 @@
 language: java
+before_script:
+  - "export DISPLAY=:99.0"
+  - "sh -e /etc/init.d/xvfb start"
+  - sleep 3 # give xvfb some time to start
 script: mvn cobertura:cobertura assembly:single
 after_success:
 - bash <(curl -s https://codecov.io/bash)
