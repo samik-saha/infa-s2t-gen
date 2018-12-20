@@ -1,6 +1,6 @@
 package com.samiksaha.infa.automateds2t;
 
-import static org.junit.Assert.*;
+import static org.junit.Assert.assertEquals;
 
 import java.io.File;
 import java.io.IOException;
@@ -9,12 +9,10 @@ import java.util.ArrayList;
 import javax.xml.parsers.DocumentBuilder;
 import javax.xml.parsers.DocumentBuilderFactory;
 import javax.xml.parsers.ParserConfigurationException;
-import javax.xml.xpath.XPath;
 import javax.xml.xpath.XPathFactory;
 
 import org.junit.BeforeClass;
 import org.junit.Test;
-import org.w3c.dom.Document;
 import org.w3c.dom.NodeList;
 import org.xml.sax.SAXException;
 
@@ -24,11 +22,10 @@ import com.samiksaha.infa.automateds2t.Mapping.TableField;
 
 public class MappingTest {
 
-	private static Document xmlDocument;
-	private static XPath xPath;
 	private static NodeList mappingNodeList;
 	private static Mapping mapping;
 	static ArrayList<S2TForTargetInstance> s2t;
+	private static MainWindow mw;
 
 	@BeforeClass
 	public static void initialize() {
@@ -43,12 +40,15 @@ public class MappingTest {
 
 			DocumentBuilder builder = builderFactory.newDocumentBuilder();
 			
-			xmlDocument = builder.parse(file);
-			xPath = XPathFactory.newInstance().newXPath();
-
-			mappingNodeList = xmlDocument.getElementsByTagName("MAPPING");
+			mw = new MainWindow();
+			MainWindow.xmlDocument = builder.parse(file);
 			
-			mapping = new Mapping(null, mappingNodeList.item(0));
+			XPathFactory.newInstance().newXPath();
+
+			mappingNodeList = MainWindow.xmlDocument.getElementsByTagName("MAPPING");
+			
+			
+			mapping = new Mapping(mw, mappingNodeList.item(0));
 			mapping.loadMappingDetails();
 			s2t = mapping.createS2T();
 		} catch (IOException | SAXException | ParserConfigurationException e) {
@@ -101,7 +101,7 @@ public class MappingTest {
 		S2TRow expectedS2TRow= mapping.new S2TRow();
 		TableField srcTblFld = mapping.new TableField();
 		expectedS2TRow.tgtFld="ID";
-		expectedS2TRow.tgtFldKeyType="string(100)";
+		expectedS2TRow.tgtFldKeyType="NOT A KEY";
 		expectedS2TRow.tgtTbl="test_Target";
 		srcTblFld.fldName="DUMMY";
 		srcTblFld.tblName="DUAL";
@@ -109,15 +109,22 @@ public class MappingTest {
 		expectedS2TRow.S2TsrcTblFld.add(srcTblFld);
 		expectedS2TRow.tgtFldNullable="NULL";
 		expectedS2TRow.logic="ID=DUMMY";
-		System.out.println(s2t.get(0).s2tRows.size());
+		System.out.println(s2t.get(0).targetInstanceName);
+		System.out.println(s2t.get(0).s2tRows);
+		assertEquals(expectedS2TRow.tgtFld, s2t.get(0).s2tRows.get(0).tgtFld);
+		assertEquals(expectedS2TRow.tgtFldKeyType, s2t.get(0).s2tRows.get(0).tgtFldKeyType);
+		assertEquals(expectedS2TRow.S2TsrcTblFld.get(0).fldName, s2t.get(0).s2tRows.get(0).S2TsrcTblFld.get(0).fldName);
+		assertEquals(expectedS2TRow.S2TsrcTblFld.get(0).tblName, s2t.get(0).s2tRows.get(0).S2TsrcTblFld.get(0).tblName);
+		assertEquals(expectedS2TRow.S2TsrcTblFld.get(0).fldType, s2t.get(0).s2tRows.get(0).S2TsrcTblFld.get(0).fldType);
+		assertEquals(expectedS2TRow.tgtFldNullable, s2t.get(0).s2tRows.get(0).tgtFldNullable);
+		assertEquals(expectedS2TRow.logic, s2t.get(0).s2tRows.get(0).logic);
 		
-		//TODO
 	}
 	
     @Test
     public final void testGetSourceTableNames() {
     	String expectedSourceTableName="DUAL";
-    	//String actualSourceTableName=mapping.getSourceTableNames().get(0);
-    	//assertEquals(expectedSourceTableName,actualSourceTableName);
+    	String actualSourceTableName=mapping.getSourceTableNames().get(0);
+    	assertEquals(expectedSourceTableName,actualSourceTableName);
     }
 }
